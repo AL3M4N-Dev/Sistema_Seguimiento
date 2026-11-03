@@ -2,7 +2,6 @@ package vista.alumno;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -18,7 +17,6 @@ import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import modelo.EstadoSolicitud;
 import modelo.ProgresoAlumno;
 import modelo.SolicitudConstancia;
@@ -28,6 +26,8 @@ import util.Sesion;
 import vista.comun.Dialogos;
 import vista.comun.Estilo;
 import vista.comun.Formato;
+import vista.comun.BarraProgreso;
+import vista.comun.Tarjeta;
 
 /**
  * Sección "Mi constancia" del menú principal del alumno.
@@ -41,16 +41,17 @@ import vista.comun.Formato;
  *     panelDelMenu.add(constancia);
  *     constancia.recargar();   // llámalo otra vez cuando el menú se actualice
  */
-public class ConstanciaAlumnoPanel extends JPanel {
+public class ConstanciaAlumnoPanel extends Tarjeta {
 
     private final ConstanciaAlumnoService servicio;
     private final JLabel institucion = Estilo.secundario(" ");
-    private final JLabel avance = new JLabel(" ");
-    private final JProgressBar barra = new JProgressBar(0, 100);
+    private final JLabel avance = Estilo.etiqueta(" ", Estilo.fuente(Font.BOLD, 24), Estilo.TEXTO);
+    private final BarraProgreso barra = new BarraProgreso(8);
     private final JLabel pendientes = Estilo.secundario(" ");
-    private final JLabel estado = new JLabel(" ");
-    private final JButton solicitar = Estilo.botonPrincipal("Solicitar constancia", Estilo.AZUL);
-    private final JButton descargar = Estilo.botonPrincipal("Descargar constancia en PDF", Estilo.VERDE);
+    private final JLabel estado = Estilo.etiqueta(" ", Estilo.fuente(Font.BOLD, 14), Estilo.TEXTO);
+    private final Tarjeta cajaEstado = new Tarjeta(new BorderLayout(), Estilo.FONDO, null, 10);
+    private final JButton solicitar = Estilo.botonPrincipal("Solicitar constancia");
+    private final JButton descargar = Estilo.botonExito("Descargar constancia en PDF");
 
     /** Para el alumno que inició sesión (util.Sesion). */
     public ConstanciaAlumnoPanel() {
@@ -58,31 +59,26 @@ public class ConstanciaAlumnoPanel extends JPanel {
     }
 
     public ConstanciaAlumnoPanel(ConstanciaAlumnoService servicio) {
+        super(new BorderLayout(0, 14));
         this.servicio = servicio;
-        setLayout(new BorderLayout(0, 12));
-        setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        setBorder(BorderFactory.createEmptyBorder(20, 22, 20, 22));
 
-        JPanel encabezado = new JPanel(new BorderLayout(0, 4));
-        encabezado.setOpaque(false);
+        JPanel encabezado = Estilo.panel(new BorderLayout(0, 4));
         encabezado.add(Estilo.subtitulo("Mi constancia de liberación"), BorderLayout.NORTH);
         encabezado.add(institucion, BorderLayout.SOUTH);
 
-        barra.setForeground(Estilo.VERDE);
-        barra.setPreferredSize(new Dimension(10, 12));
-        estado.setOpaque(true);
-        estado.setFont(estado.getFont().deriveFont(Font.BOLD));
-        estado.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        cajaEstado.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        cajaEstado.add(estado, BorderLayout.CENTER);
 
-        JPanel centro = new JPanel(new GridBagLayout());
-        centro.setOpaque(false);
-        agregar(centro, avance, 0, 0);
-        agregar(centro, barra, 1, 6);
-        agregar(centro, pendientes, 2, 4);
-        agregar(centro, estado, 3, 14);
+        JPanel centro = Estilo.panel(new GridBagLayout());
+        agregar(centro, Estilo.etiqueta("Horas aprobadas", Estilo.fuente(Font.BOLD, 13), Estilo.TEXTO_SECUNDARIO), 0, 0);
+        agregar(centro, avance, 1, 2);
+        agregar(centro, barra, 2, 8);
+        agregar(centro, pendientes, 3, 6);
+        agregar(centro, cajaEstado, 4, 14);
 
-        JButton actualizar = new JButton("Actualizar");
-        JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        botones.setOpaque(false);
+        JButton actualizar = Estilo.botonSecundario("Actualizar");
+        JPanel botones = Estilo.panel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.add(actualizar);
         botones.add(descargar);
         botones.add(solicitar);
@@ -109,8 +105,8 @@ public class ConstanciaAlumnoPanel extends JPanel {
     private void mostrar(ProgresoAlumno p, SolicitudConstancia s) {
         if (p == null) {
             institucion.setText("Sin institución");
-            avance.setText("Horas aprobadas: 0");
-            barra.setValue(0);
+            avance.setText("0 h");
+            barra.setValor(0);
             pendientes.setText(" ");
             mensaje("Aún no estás inscrito a una institución.", Estilo.FONDO, Estilo.TEXTO_SECUNDARIO);
             solicitar.setVisible(true);
@@ -121,9 +117,9 @@ public class ConstanciaAlumnoPanel extends JPanel {
         }
         int porcentaje = Formato.porcentaje(p.getHorasAprobadas(), p.getHorasRequeridas());
         institucion.setText(p.getInstitucion());
-        avance.setText("Horas aprobadas: " + Formato.horas(p.getHorasAprobadas()) + " de "
-                + p.getHorasRequeridas() + " h (" + porcentaje + "%)");
-        barra.setValue(porcentaje);
+        avance.setText(Formato.horas(p.getHorasAprobadas()) + " / " + p.getHorasRequeridas() + " h  ·  " + porcentaje + "%");
+        avance.setForeground(p.completo() ? Estilo.APROBADO_TEXTO : Estilo.TEXTO);
+        barra.setValor(porcentaje);
         BigDecimal enRevision = p.getHorasPendientes() == null ? BigDecimal.ZERO : p.getHorasPendientes();
         pendientes.setText(enRevision.signum() > 0
                 ? Formato.horas(enRevision) + " h esperan la revisión del docente (aún no cuentan)."
@@ -194,9 +190,9 @@ public class ConstanciaAlumnoPanel extends JPanel {
     /** Mensaje de estado con colores; el texto se ajusta a varias líneas. */
     private void mensaje(String texto, Color fondo, Color letra) {
         String seguro = texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-        estado.setText("<html><body style='width: 460px'>" + seguro + "</body></html>");
-        estado.setBackground(fondo);
+        estado.setText("<html><body style='width: 440px'>" + seguro + "</body></html>");
         estado.setForeground(letra);
+        cajaEstado.setColores(fondo, null);
     }
 
     private static void agregar(JPanel panel, JComponent c, int fila, int espacioArriba) {

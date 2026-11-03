@@ -28,7 +28,6 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
@@ -41,6 +40,8 @@ import servicio.ReglaNegocioException;
 import vista.comun.Dialogos;
 import vista.comun.Estilo;
 import vista.comun.Formato;
+import vista.comun.Tarjeta;
+import vista.comun.BarraProgreso;
 
 /**
  * Detalle de un registro: datos del turno, reporte, evidencias y botones
@@ -88,7 +89,8 @@ public class DetalleRegistroDialog extends JDialog {
         this.servicio = servicio;
         this.registro = registro;
 
-        contenido.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+        contenido.setBackground(Estilo.SUPERFICIE);
+        contenido.setBorder(BorderFactory.createEmptyBorder(22, 26, 22, 26));
         agregarAlumno(horasAprobadas);
         agregarDatosTurno();
         agregarReporte();
@@ -98,11 +100,9 @@ public class DetalleRegistroDialog extends JDialog {
         // Relleno para que todo quede pegado arriba
         GridBagConstraints relleno = restricciones(0);
         relleno.weighty = 1;
-        contenido.add(new JPanel(), relleno);
+        contenido.add(Estilo.panel(new BorderLayout()), relleno);
 
-        JScrollPane scroll = new JScrollPane(contenido);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        JScrollPane scroll = Estilo.scroll(contenido);
 
         setLayout(new BorderLayout());
         add(scroll, BorderLayout.CENTER);
@@ -122,17 +122,15 @@ public class DetalleRegistroDialog extends JDialog {
                 + "  ·  " + registro.getInstitucionNombre()), 4);
 
         int porcentaje = Formato.porcentaje(horasAprobadas, registro.getHorasRequeridas());
-        JProgressBar barra = new JProgressBar(0, 100);
-        barra.setValue(porcentaje);
-        barra.setForeground(Estilo.VERDE);
-        barra.setPreferredSize(new Dimension(10, 10));
-        agregar(new JLabel("Horas aprobadas: " + Formato.horas(horasAprobadas) + " de "
-                + registro.getHorasRequeridas() + " h (" + porcentaje + "%)"), 16);
+        BarraProgreso barra = new BarraProgreso(8);
+        barra.setValor(porcentaje);
+        agregar(Estilo.etiqueta("Horas aprobadas: " + Formato.horas(horasAprobadas) + " de "
+                + registro.getHorasRequeridas() + " h (" + porcentaje + "%)", Estilo.fuente(Font.BOLD, 13), Estilo.TEXTO), 16);
         agregar(barra, 6);
     }
 
     private void agregarDatosTurno() {
-        JPanel datos = new JPanel(new GridLayout(1, 3, 12, 0));
+        JPanel datos = Estilo.panel(new GridLayout(1, 3, 12, 0));
         datos.add(dato("Fecha", Formato.fecha(registro.getFecha())));
         datos.add(dato("Horario", Formato.horario(registro.getHoraInicio(), registro.getHoraFin())));
         datos.add(dato("Horas del turno", Formato.horas(registro.getHorasCalculadas()) + " h"));
@@ -146,9 +144,13 @@ public class DetalleRegistroDialog extends JDialog {
         reporte.setLineWrap(true);
         reporte.setWrapStyleWord(true);
         reporte.setRows(4);
+        reporte.setFont(Estilo.fuente(Font.PLAIN, 14));
+        reporte.setForeground(Estilo.TEXTO);
         reporte.setBackground(Estilo.FONDO);
-        reporte.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
-        agregar(new JScrollPane(reporte), 6);
+        reporte.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        JScrollPane scrollReporte = new JScrollPane(reporte);
+        scrollReporte.setBorder(BorderFactory.createLineBorder(Estilo.BORDE));
+        agregar(scrollReporte, 6);
     }
 
     private void agregarEvidencias(List<Evidencia> evidencias) {
@@ -157,7 +159,7 @@ public class DetalleRegistroDialog extends JDialog {
             agregar(Estilo.secundario("El alumno no subió imágenes."), 6);
             return;
         }
-        JPanel miniaturas = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        JPanel miniaturas = Estilo.panel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         for (Evidencia ev : evidencias) {
             miniaturas.add(crearMiniatura(ev));
             miniaturas.add(Box.createHorizontalStrut(10));
@@ -185,18 +187,23 @@ public class DetalleRegistroDialog extends JDialog {
         agregar(Estilo.secundario("Obligatorio si rechazas: el alumno lo leerá para corregir su registro."), 2);
         comentario.setLineWrap(true);
         comentario.setWrapStyleWord(true);
-        agregar(new JScrollPane(comentario), 6);
+        comentario.setFont(Estilo.fuente(Font.PLAIN, 14));
+        comentario.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        JScrollPane scrollComentario = new JScrollPane(comentario);
+        scrollComentario.setBorder(BorderFactory.createLineBorder(Estilo.BORDE_FUERTE));
+        agregar(scrollComentario, 6);
     }
 
     private JPanel crearBotones() {
-        JPanel barra = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
+        JPanel barra = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 14));
+        barra.setBackground(Estilo.SUPERFICIE);
         barra.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Estilo.BORDE));
-        JButton cerrar = new JButton("Cerrar");
+        JButton cerrar = Estilo.botonSecundario("Cerrar");
         cerrar.addActionListener(e -> dispose());
         barra.add(cerrar);
         if (registro.getEstado() == EstadoRegistro.PENDIENTE) {
-            JButton rechazar = Estilo.botonContorno("Rechazar", Estilo.ROJO);
-            JButton aprobar = Estilo.botonPrincipal("Aprobar", Estilo.VERDE);
+            JButton rechazar = Estilo.botonPeligro("Rechazar");
+            JButton aprobar = Estilo.botonExito("Aprobar");
             rechazar.addActionListener(e -> rechazar());
             aprobar.addActionListener(e -> aprobar());
             barra.add(rechazar);
@@ -279,13 +286,10 @@ public class DetalleRegistroDialog extends JDialog {
     }
 
     private static JPanel dato(String etiqueta, String valor) {
-        JPanel p = new JPanel(new BorderLayout(0, 2));
-        p.setBackground(Estilo.FONDO);
+        Tarjeta p = new Tarjeta(new BorderLayout(0, 2), Estilo.FONDO, null, 10);
         p.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
-        JLabel v = new JLabel(valor);
-        v.setFont(v.getFont().deriveFont(Font.BOLD, 15f));
         p.add(Estilo.secundario(etiqueta), BorderLayout.NORTH);
-        p.add(v, BorderLayout.CENTER);
+        p.add(Estilo.etiqueta(valor, Estilo.fuente(Font.BOLD, 16), Estilo.TEXTO), BorderLayout.CENTER);
         return p;
     }
 

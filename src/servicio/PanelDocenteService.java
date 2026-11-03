@@ -128,6 +128,31 @@ public class PanelDocenteService {
         return alumnos.listar(filtroDocente());
     }
 
+    /** Los últimos turnos APROBADOS de un alumno (para su ficha). */
+    public List<RegistroHoras> ultimosTurnosAprobados(int idInscripcion, int cuantos) throws SQLException {
+        return registros.listarPorInscripcion(idInscripcion, EstadoRegistro.APROBADO, cuantos);
+    }
+
+    /** Cuántos turnos aprobados tiene un alumno. */
+    public int turnosAprobados(int idInscripcion) throws SQLException {
+        return registros.contarAprobados(idInscripcion);
+    }
+
+    /** Todos los registros de un alumno, de cualquier estado ("Ver todos sus registros"). */
+    public List<RegistroHoras> registrosDe(int idInscripcion) throws SQLException {
+        return registros.listarPorInscripcion(idInscripcion, null, 0);
+    }
+
+    /** Cuántos registros pendientes hay (para el contador de la pestaña). */
+    public int contarRegistrosPendientes() throws SQLException {
+        return listarRegistros(EstadoRegistro.PENDIENTE).size();
+    }
+
+    /** Cuántas instituciones esperan revisión (para el contador de la pestaña). */
+    public int contarInstitucionesEnRevision() throws SQLException {
+        return listarInstitucionesEnRevision().size();
+    }
+
     /**
      * "Subir PDF y aprobar": guarda el PDF de la constancia y la deja disponible
      * para que el alumno la descargue. Funciona igual para servicio social y prácticas,

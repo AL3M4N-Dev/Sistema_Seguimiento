@@ -7,30 +7,32 @@ import java.awt.event.MouseEvent;
 import java.sql.SQLException;
 import java.util.List;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import modelo.EstadoRegistro;
 import modelo.Programa;
 import modelo.RegistroHoras;
 import servicio.PanelDocenteService;
+import vista.comun.Boton;
+import vista.comun.ChipFiltro;
 import vista.comun.Dialogos;
 import vista.comun.EstadoRenderer;
 import vista.comun.Estilo;
 import vista.comun.Formato;
 import vista.comun.ListaTableModel;
+import vista.comun.Tarjeta;
 
-/** Pestaña 1: bandeja de registros de horas para aprobar o rechazar. */
+/** Sección "Registros": bandeja de turnos para aprobar o rechazar. */
 public class RegistrosPanel extends JPanel {
 
     private static final int COL_ESTADO = 7;
 
     private final PanelDocenteService servicio;
-    private final JComboBox<EstadoRegistro> filtro = new JComboBox<>(EstadoRegistro.values());
+    private final ChipFiltro verPendientes = new ChipFiltro("Pendientes");
+    private final ChipFiltro verAprobados = new ChipFiltro("Aprobados");
+    private final ChipFiltro verRechazados = new ChipFiltro("Rechazados");
     private final ListaTableModel<RegistroHoras> modelo = new ListaTableModel<>(
             new String[]{"Alumno", "Matrícula", "Programa", "Institución", "Fecha", "Horario", "Horas", "Estado"},
             (r, col) -> switch (col) {
@@ -48,43 +50,56 @@ public class RegistrosPanel extends JPanel {
 
     public RegistrosPanel(PanelDocenteService servicio) {
         this.servicio = servicio;
-        setLayout(new BorderLayout(0, 12));
-        setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        setLayout(new BorderLayout(0, 16));
+        setBackground(Estilo.FONDO);
+        setBorder(BorderFactory.createEmptyBorder(22, 28, 22, 28));
 
-        JButton actualizar = new JButton("Actualizar");
-        JButton revisar = Estilo.botonPrincipal("Revisar registro", Estilo.AZUL);
+        String alcance = servicio.getUsuario().esResponsable()
+                ? "Turnos de todos los alumnos. Doble clic en uno para revisarlo."
+                : "Turnos de tus alumnos asignados (y de los que aún no tienen docente). Doble clic en uno para revisarlo.";
+        JPanel textos = Estilo.panel(new BorderLayout(0, 4));
+        textos.add(Estilo.titulo("Registros de horas"), BorderLayout.NORTH);
+        textos.add(Estilo.secundario(alcance), BorderLayout.SOUTH);
 
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        acciones.add(new JLabel("Estado:"));
-        acciones.add(filtro);
+        ChipFiltro.grupo(verPendientes, verAprobados, verRechazados);
+        JPanel filtros = Estilo.panel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        filtros.add(verPendientes);
+        filtros.add(verAprobados);
+        filtros.add(verRechazados);
+
+        Boton actualizar = Estilo.botonSecundario("Actualizar");
+        Boton revisar = Estilo.botonPrincipal("Revisar registro");
+        JPanel acciones = Estilo.panel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         acciones.add(actualizar);
         acciones.add(revisar);
 
-        String alcance = servicio.getUsuario().esResponsable()
-                ? "Registros de todos los alumnos"
-                : "Registros de tus alumnos asignados (y de los que aún no tienen docente)";
-        JPanel textos = new JPanel(new BorderLayout(0, 4));
-        textos.add(Estilo.subtitulo("Registros de horas"), BorderLayout.NORTH);
-        textos.add(Estilo.secundario(alcance), BorderLayout.SOUTH);
+        JPanel barra = Estilo.panel(new BorderLayout());
+        barra.add(filtros, BorderLayout.WEST);
+        barra.add(acciones, BorderLayout.EAST);
 
-        JPanel arriba = new JPanel(new BorderLayout());
-        arriba.add(textos, BorderLayout.WEST);
-        arriba.add(acciones, BorderLayout.EAST);
+        JPanel arriba = Estilo.panel(new BorderLayout(0, 16));
+        arriba.add(textos, BorderLayout.NORTH);
+        arriba.add(barra, BorderLayout.SOUTH);
 
-        tabla.setRowHeight(32);
+        Estilo.estilizarTabla(tabla);
         tabla.setAutoCreateRowSorter(true);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tabla.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new EstadoRenderer());
-        int[] anchos = {170, 90, 110, 200, 90, 110, 60, 100};
+        int[] anchos = {170, 90, 110, 200, 90, 110, 60, 110};
         for (int i = 0; i < anchos.length; i++) {
             tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
         }
+        Tarjeta marco = new Tarjeta(new BorderLayout(), Estilo.SUPERFICIE, Estilo.BORDE, 14);
+        marco.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
+        marco.add(Estilo.scroll(tabla), BorderLayout.CENTER);
 
         add(arriba, BorderLayout.NORTH);
-        add(new JScrollPane(tabla), BorderLayout.CENTER);
+        add(marco, BorderLayout.CENTER);
         add(resumen, BorderLayout.SOUTH);
 
-        filtro.addActionListener(e -> recargar());
+        verPendientes.addActionListener(e -> recargar());
+        verAprobados.addActionListener(e -> recargar());
+        verRechazados.addActionListener(e -> recargar());
         actualizar.addActionListener(e -> recargar());
         revisar.addActionListener(e -> abrirDetalle());
         tabla.addMouseListener(new MouseAdapter() {
@@ -97,13 +112,18 @@ public class RegistrosPanel extends JPanel {
         });
     }
 
+    private EstadoRegistro estadoElegido() {
+        return verAprobados.isSelected() ? EstadoRegistro.APROBADO
+                : verRechazados.isSelected() ? EstadoRegistro.RECHAZADO : EstadoRegistro.PENDIENTE;
+    }
+
     public final void recargar() {
-        EstadoRegistro estado = (EstadoRegistro) filtro.getSelectedItem();
+        EstadoRegistro estado = estadoElegido();
         try {
             List<RegistroHoras> lista = servicio.listarRegistros(estado);
             modelo.setFilas(lista);
-            resumen.setText(lista.size() + " registro(s) con estado \"" + estado + "\"."
-                    + (estado == EstadoRegistro.PENDIENTE ? " Doble clic en uno para revisarlo." : ""));
+            resumen.setText(lista.size() + " registro(s) " + estado.toString().toLowerCase()
+                    + (estado == EstadoRegistro.PENDIENTE ? "(s) por revisar" : "(s)") + ".");
         } catch (SQLException e) {
             Dialogos.mostrarError(this, e);
         }

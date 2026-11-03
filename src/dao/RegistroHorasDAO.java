@@ -54,6 +54,47 @@ public class RegistroHorasDAO {
         return lista;
     }
 
+    /**
+     * Registros de una inscripción, del más reciente al más antiguo.
+     *
+     * @param estado si no es null, solo los de ese estado
+     * @param limite cuántos como máximo (0 = todos)
+     */
+    public List<RegistroHoras> listarPorInscripcion(int idInscripcion, EstadoRegistro estado, int limite)
+            throws SQLException {
+        String sql = SELECT_BASE + "WHERE r.id_inscripcion = ? "
+                + (estado == null ? "" : "AND r.estado = ? ")
+                + "ORDER BY r.fecha DESC, r.hora_inicio DESC, r.id_registro DESC"
+                + (limite > 0 ? " LIMIT " + limite : "");
+        List<RegistroHoras> lista = new ArrayList<>();
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idInscripcion);
+            if (estado != null) {
+                ps.setString(2, estado.getValorBd());
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapear(rs));
+                }
+            }
+        }
+        return lista;
+    }
+
+    /** Cuántos turnos aprobados tiene una inscripción. */
+    public int contarAprobados(int idInscripcion) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM registros_horas WHERE id_inscripcion = ? AND estado = 'aprobado'";
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idInscripcion);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        }
+    }
+
     public RegistroHoras buscarPorId(int idRegistro) throws SQLException {
         try (Connection con = Conexion.getConexion();
              PreparedStatement ps = con.prepareStatement(SELECT_BASE + "WHERE r.id_registro = ?")) {

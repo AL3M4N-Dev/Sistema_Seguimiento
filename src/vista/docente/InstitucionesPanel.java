@@ -5,21 +5,21 @@ import java.awt.FlowLayout;
 import java.sql.SQLException;
 import java.util.List;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import modelo.Institucion;
 import servicio.PanelDocenteService;
 import servicio.ReglaNegocioException;
+import vista.comun.Boton;
 import vista.comun.Dialogos;
 import vista.comun.Estilo;
 import vista.comun.Formato;
 import vista.comun.ListaTableModel;
+import vista.comun.Tarjeta;
 
-/** Pestaña 2: instituciones de prácticas que dieron de alta los alumnos. */
+/** Sección "Instituciones": las de prácticas que dieron de alta los alumnos. */
 public class InstitucionesPanel extends JPanel {
 
     private final PanelDocenteService servicio;
@@ -38,37 +38,40 @@ public class InstitucionesPanel extends JPanel {
 
     public InstitucionesPanel(PanelDocenteService servicio) {
         this.servicio = servicio;
-        setLayout(new BorderLayout(0, 12));
-        setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        setLayout(new BorderLayout(0, 16));
+        setBackground(Estilo.FONDO);
+        setBorder(BorderFactory.createEmptyBorder(22, 28, 22, 28));
 
-        JButton actualizar = new JButton("Actualizar");
-        JButton rechazar = Estilo.botonContorno("Rechazar", Estilo.ROJO);
-        JButton aprobar = Estilo.botonPrincipal("Aprobar", Estilo.VERDE);
+        JPanel textos = Estilo.panel(new BorderLayout(0, 4));
+        textos.add(Estilo.titulo("Instituciones de prácticas por aprobar"), BorderLayout.NORTH);
+        textos.add(Estilo.secundario("Las dan de alta los alumnos. Mientras estén en revisión, el alumno no puede registrar horas."),
+                BorderLayout.SOUTH);
 
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        Boton actualizar = Estilo.botonSecundario("Actualizar");
+        Boton rechazar = Estilo.botonPeligro("Rechazar");
+        Boton aprobar = Estilo.botonExito("Aprobar");
+        JPanel acciones = Estilo.panel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         acciones.add(actualizar);
         acciones.add(rechazar);
         acciones.add(aprobar);
 
-        JPanel textos = new JPanel(new BorderLayout(0, 4));
-        textos.add(Estilo.subtitulo("Instituciones de prácticas por aprobar"), BorderLayout.NORTH);
-        textos.add(Estilo.secundario("Mientras una institución esté en revisión, el alumno no puede registrar horas."),
-                BorderLayout.SOUTH);
-
-        JPanel arriba = new JPanel(new BorderLayout());
-        arriba.add(textos, BorderLayout.WEST);
+        JPanel arriba = Estilo.panel(new BorderLayout(16, 0));
+        arriba.add(textos, BorderLayout.CENTER);
         arriba.add(acciones, BorderLayout.EAST);
 
-        tabla.setRowHeight(32);
+        Estilo.estilizarTabla(tabla);
         tabla.setAutoCreateRowSorter(true);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        int[] anchos = {200, 140, 200, 200, 60, 130};
+        int[] anchos = {210, 150, 200, 210, 70, 140};
         for (int i = 0; i < anchos.length; i++) {
             tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
         }
+        Tarjeta marco = new Tarjeta(new BorderLayout(), Estilo.SUPERFICIE, Estilo.BORDE, 14);
+        marco.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
+        marco.add(Estilo.scroll(tabla), BorderLayout.CENTER);
 
         add(arriba, BorderLayout.NORTH);
-        add(new JScrollPane(tabla), BorderLayout.CENTER);
+        add(marco, BorderLayout.CENTER);
         add(resumen, BorderLayout.SOUTH);
 
         actualizar.addActionListener(e -> recargar());

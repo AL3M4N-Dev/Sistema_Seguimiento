@@ -12,10 +12,10 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 import modelo.Usuario;
 import util.Conexion;
 import util.Sesion;
+import vista.comun.Estilo;
 
 /**
  * SOLO PARA PROBAR la parte 5 sin pasar por el inicio de sesión.
@@ -25,11 +25,7 @@ import util.Sesion;
 public class PruebaPanelDocente {
 
     public static void main(String[] args) {
-        try {
-            UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
-        } catch (Exception ignorada) {
-            // Se queda la apariencia por defecto de Java
-        }
+        Estilo.aplicarTema();   // diseño base del proyecto
         SwingUtilities.invokeLater(PruebaPanelDocente::iniciar);
     }
 

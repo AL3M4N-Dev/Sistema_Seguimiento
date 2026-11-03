@@ -1,25 +1,36 @@
 package vista.docente;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
+import java.awt.CardLayout;
 import java.awt.Dimension;
-import javax.swing.BorderFactory;
+import java.sql.SQLException;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
 import modelo.Usuario;
 import servicio.PanelDocenteService;
 import util.Sesion;
+import vista.comun.EncabezadoApp;
 import vista.comun.Estilo;
 
 /**
- * Ventana principal del docente y del responsable de área (parte 5).
- * Pestañas: Registros de horas · Alumnos y constancias · Instituciones por aprobar.
+ * Ventana principal del docente y del responsable de área (parte 5), con el diseño base:
+ * encabezado con pestañas (Registros · Alumnos y constancias · Instituciones).
  *
  * Desde el inicio de sesión se abre así, cuando el usuario es docente o responsable:
  *     new PanelDocenteFrame().setVisible(true);      // usa Sesion.getUsuario()
+ *
+ * Para que "Cerrar sesión" regrese a la pantalla de login:
+ *     panel.setAccionCerrarSesion(() -> new LoginFrame().setVisible(true));
  */
 public class PanelDocenteFrame extends JFrame {
+
+    private static final String REGISTROS = "registros";
+    private static final String ALUMNOS = "alumnos";
+    private static final String INSTITUCIONES = "instituciones";
+
+    private final PanelDocenteService servicio;
+    private final EncabezadoApp encabezado;
+    private Runnable despuesDeCerrarSesion = () -> { };
 
     /** Abre el panel para el usuario que inició sesión (util.Sesion). */
     public PanelDocenteFrame() {
@@ -27,55 +38,71 @@ public class PanelDocenteFrame extends JFrame {
     }
 
     public PanelDocenteFrame(Usuario usuario) {
-        super("Panel del docente · Servicio Social y Prácticas");
+        super("Seguimiento · Panel del docente");
         if (usuario == null || !(usuario.esDocente() || usuario.esResponsable())) {
             throw new IllegalStateException("El panel es solo para docentes y responsables de área.");
         }
-        PanelDocenteService servicio = new PanelDocenteService(usuario);
+        servicio = new PanelDocenteService(usuario);
 
         RegistrosPanel registros = new RegistrosPanel(servicio);
         AlumnosPanel alumnos = new AlumnosPanel(servicio);
         InstitucionesPanel instituciones = new InstitucionesPanel(servicio);
 
-        JTabbedPane pestanas = new JTabbedPane();
-        pestanas.addTab("Registros de horas", registros);
-        pestanas.addTab("Alumnos y constancias", alumnos);
-        pestanas.addTab("Instituciones por aprobar", instituciones);
+        CardLayout tarjetas = new CardLayout();
+        JPanel contenido = new JPanel(tarjetas);
+        contenido.setBackground(Estilo.FONDO);
+        contenido.add(registros, REGISTROS);
+        contenido.add(alumnos, ALUMNOS);
+        contenido.add(instituciones, INSTITUCIONES);
 
-        // Cada vez que se cambia de pestaña, se vuelve a leer la base
-        pestanas.addChangeListener(e -> {
-            Object actual = pestanas.getSelectedComponent();
-            if (actual == registros) {
-                registros.recargar();
-            } else if (actual == alumnos) {
-                alumnos.recargar();
-            } else if (actual == instituciones) {
-                instituciones.recargar();
+        String rol = usuario.esResponsable() ? "Responsable de área" : "Docente";
+        encabezado = new EncabezadoApp(usuario.getNombre() + " · " + rol);
+        encabezado.agregarSeccion(REGISTROS, "Registros");
+        encabezado.agregarSeccion(ALUMNOS, "Alumnos y constancias");
+        encabezado.agregarSeccion(INSTITUCIONES, "Instituciones");
+        // Al cambiar de sección se vuelve a leer la base y se actualizan los contadores
+        encabezado.alCambiarSeccion(clave -> {
+            tarjetas.show(contenido, clave);
+            switch (clave) {
+                case REGISTROS -> registros.recargar();
+                case ALUMNOS -> alumnos.recargar();
+                default -> instituciones.recargar();
             }
+            actualizarContadores();
         });
+        encabezado.alCerrarSesion(this::cerrarSesion);
 
         setLayout(new BorderLayout());
-        add(crearEncabezado(usuario), BorderLayout.NORTH);
-        add(pestanas, BorderLayout.CENTER);
+        add(encabezado, BorderLayout.NORTH);
+        add(contenido, BorderLayout.CENTER);
+        getContentPane().setBackground(Estilo.FONDO);
 
-        registros.recargar();
+        encabezado.seleccionar(REGISTROS);
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setMinimumSize(new Dimension(1100, 680));
-        setSize(1240, 780);
+        setMinimumSize(new Dimension(1120, 700));
+        setSize(1280, 800);
         setLocationRelativeTo(null);
     }
 
-    private JPanel crearEncabezado(Usuario usuario) {
-        JPanel encabezado = new JPanel(new BorderLayout(0, 4));
-        encabezado.setBackground(Color.WHITE);
-        encabezado.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, Estilo.BORDE),
-                BorderFactory.createEmptyBorder(16, 20, 14, 20)));
-        encabezado.add(Estilo.titulo(usuario.esResponsable() ? "Panel del responsable de área" : "Panel del docente"),
-                BorderLayout.NORTH);
-        String rol = usuario.esResponsable() ? "Responsable de área" : "Docente";
-        encabezado.add(Estilo.secundario("Sesión: " + usuario.getNombre() + "  ·  " + rol), BorderLayout.SOUTH);
-        return encabezado;
+    /** Qué hacer después de cerrar sesión (por ejemplo, abrir otra vez el login). */
+    public void setAccionCerrarSesion(Runnable accion) {
+        this.despuesDeCerrarSesion = accion;
+    }
+
+    private void cerrarSesion() {
+        Sesion.cerrar();
+        dispose();
+        despuesDeCerrarSesion.run();
+    }
+
+    /** Números junto a las pestañas: registros pendientes e instituciones por revisar. */
+    private void actualizarContadores() {
+        try {
+            encabezado.setContador(REGISTROS, servicio.contarRegistrosPendientes());
+            encabezado.setContador(INSTITUCIONES, servicio.contarInstitucionesEnRevision());
+        } catch (SQLException e) {
+            // Si falla, la pestaña ya mostró el error; los contadores se quedan como estaban
+        }
     }
 }

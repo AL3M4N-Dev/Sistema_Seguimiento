@@ -13,10 +13,10 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 import modelo.Usuario;
 import util.Conexion;
 import util.Sesion;
+import vista.comun.Estilo;
 
 /**
  * SOLO PARA PROBAR la constancia del alumno sin pasar por el inicio de sesión.
@@ -25,11 +25,7 @@ import util.Sesion;
 public class PruebaConstanciaAlumno {
 
     public static void main(String[] args) {
-        try {
-            UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
-        } catch (Exception ignorada) {
-            // Se queda la apariencia por defecto de Java
-        }
+        Estilo.aplicarTema();   // diseño base del proyecto
         SwingUtilities.invokeLater(PruebaConstanciaAlumno::iniciar);
     }
 
@@ -68,8 +64,12 @@ public class PruebaConstanciaAlumno {
         ConstanciaAlumnoPanel constancia = new ConstanciaAlumnoPanel();
         JFrame ventana = new JFrame("Mi constancia · " + Sesion.getUsuario().getNombre() + " (prueba)");
         ventana.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        ventana.add(constancia);
-        ventana.setSize(680, 380);
+        JPanel fondo = new JPanel(new BorderLayout());
+        fondo.setBackground(Estilo.FONDO);
+        fondo.setBorder(javax.swing.BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        fondo.add(constancia, BorderLayout.NORTH);
+        ventana.setContentPane(fondo);
+        ventana.setSize(720, 460);
         ventana.setLocationRelativeTo(null);
         ventana.setVisible(true);
         constancia.recargar();
