@@ -44,12 +44,15 @@ import vista.comun.Dialogos;
 import vista.comun.Estilo;
 import vista.comun.Formato;
 import vista.comun.Tarjeta;
+import vista.comun.TextoAjustado;
 import vista.comun.ZonaArchivo;
 
 /**
  * Pestaña "Alumnos y constancias" (diseño base, opción E):
  * a la izquierda la lista de alumnos con su avance; a la derecha el detalle del
  * seleccionado, sus últimos turnos y la constancia con zona para arrastrar el PDF.
+ * Solo muestra constancias POR RESOLVER: al aprobarla o rechazarla, el alumno pasa
+ * a la pestaña "Historial de constancias".
  */
 public class AlumnosPanel extends JPanel {
 
@@ -131,7 +134,8 @@ public class AlumnosPanel extends JPanel {
     public final void recargar() {
         AlumnoActivo antes = lista.getSelectedValue();
         try {
-            todos = servicio.listarAlumnos();
+            todos = new ArrayList<>(servicio.listarAlumnos());
+            todos.removeIf(a -> !constanciaPendiente(a));
             todos.sort(Comparator.comparingInt(AlumnosPanel::prioridad)
                     .thenComparing(a -> -Formato.porcentaje(a.getHorasAprobadas(), a.getHorasRequeridas()))
                     .thenComparing(AlumnoActivo::getNombre));
@@ -141,15 +145,21 @@ public class AlumnosPanel extends JPanel {
         filtrar(antes == null ? null : antes.getIdInscripcion());
     }
 
-    /** Primero los que puedes atender: listos para constancia, luego solicitudes, en curso y entregadas. */
+    /**
+     * Aquí solo quedan las constancias por resolver. En cuanto se APRUEBA o se RECHAZA,
+     * el alumno sale de esta lista y queda en "Historial de constancias".
+     * Si un alumno rechazado vuelve a pedirla, regresa aquí (su solicitud queda en espera).
+     */
+    static boolean constanciaPendiente(AlumnoActivo a) {
+        return !a.tieneConstancia() && !a.solicitudRechazada();
+    }
+
+    /** Primero los que puedes atender: listos para constancia, luego solicitudes en espera y en curso. */
     private static int prioridad(AlumnoActivo a) {
-        if (a.horasCompletas() && !a.tieneConstancia()) {
+        if (a.horasCompletas()) {
             return 0;
         }
-        if (a.solicitudEnEspera()) {
-            return 1;
-        }
-        return a.tieneConstancia() ? 3 : 2;
+        return a.solicitudEnEspera() ? 1 : 2;
     }
 
     private void filtrar() {
@@ -183,7 +193,7 @@ public class AlumnosPanel extends JPanel {
             lista.ensureIndexIsVisible(aSeleccionar);
         }
         recargando = false;
-        long listos = todos.stream().filter(a -> a.horasCompletas() && !a.tieneConstancia()).count();
+        long listos = todos.stream().filter(AlumnoActivo::horasCompletas).count();
         resumen.setText(modeloLista.size() + " de " + todos.size() + " alumno(s)  ·  " + listos + " listo(s) para constancia");
         mostrarDetalle();
     }
@@ -199,7 +209,8 @@ public class AlumnosPanel extends JPanel {
         if (a == null) {
             Tarjeta vacio = new Tarjeta();
             vacio.setBorder(BorderFactory.createEmptyBorder(40, 24, 40, 24));
-            JLabel texto = Estilo.etiqueta(todos.isEmpty() ? "Todavía no hay alumnos inscritos."
+            JLabel texto = Estilo.etiqueta(todos.isEmpty()
+                    ? "No hay constancias pendientes. Las aprobadas y rechazadas están en Historial de constancias."
                     : "Selecciona un alumno de la lista para ver su detalle.", Estilo.fuente(Font.PLAIN, 15), Estilo.TEXTO_SECUNDARIO);
             texto.setHorizontalAlignment(JLabel.CENTER);
             vacio.add(texto, BorderLayout.CENTER);
@@ -326,7 +337,6 @@ public class AlumnosPanel extends JPanel {
     private JComponent crearConstancia(AlumnoActivo a) {
         Tarjeta t = new Tarjeta(new BorderLayout(0, 12));
         boolean completo = a.horasCompletas();
-        boolean entregada = a.tieneConstancia();
         String programa = "practicas".equals(a.getTipoPrograma()) ? "prácticas" : "servicio social";
 
         JPanel cabecera = Estilo.panel(new BorderLayout(8, 0));
@@ -334,12 +344,16 @@ public class AlumnosPanel extends JPanel {
         cabecera.add(Chip.deEstado(a.textoConstancia()), BorderLayout.EAST);
         JPanel arriba = Estilo.panel(new BorderLayout(0, 4));
         arriba.add(cabecera, BorderLayout.NORTH);
-        arriba.add(Estilo.secundario(lineaDeEstado(a)), BorderLayout.SOUTH);
+        // El texto se acomoda en varias líneas si la tarjeta es angosta
+        TextoAjustado linea = new TextoAjustado(lineaDeEstado(a), Estilo.fuente(Font.PLAIN, 13),
+                Estilo.TEXTO_SECUNDARIO, false);
+        linea.setAjusteAutomatico(true);
+        arriba.add(linea, BorderLayout.SOUTH);
         t.add(arriba, BorderLayout.NORTH);
 
-        ZonaArchivo zona = new ZonaArchivo(
-                entregada ? "Arrastra aquí un PDF para reemplazarla" : "Arrastra aquí el PDF de la constancia",
+        ZonaArchivo zona = new ZonaArchivo("Arrastra aquí el PDF de la constancia",
                 "o haz clic para elegirlo · solo PDF, máximo 10 MB", "Archivos PDF", "pdf");
+        zona.setTituloSelector("Elegir la constancia de " + a.getNombre(), "Solo archivos PDF, máximo 10 MB.");
         zona.setEnabled(completo);
         if (!completo) {
             zona.setTextos("Todavía no se puede subir", "Le faltan " + Formato.horas(a.horasFaltantes()) + " h aprobadas");
@@ -347,32 +361,19 @@ public class AlumnosPanel extends JPanel {
         zona.alElegirArchivo(f -> archivoElegido = f);
         t.add(zona, BorderLayout.CENTER);
 
-        Boton subir = Estilo.botonExito(entregada ? "Reemplazar PDF" : "Subir PDF y aprobar");
+        Boton subir = Estilo.botonExito("Subir PDF y aprobar");
         subir.setEnabled(completo);
         if (!completo) {
             subir.setToolTipText("Se habilita cuando el alumno completa sus horas aprobadas.");
         }
         subir.addActionListener(e -> subirPdfYAprobar(a, zona));
-
-        // Entregada: "Abrir PDF" y "Reemplazar PDF" lado a lado; si no, el botón ocupa todo el ancho
-        JPanel botones;
-        if (entregada) {
-            Boton abrir = Estilo.botonSecundario("Abrir PDF");
-            abrir.addActionListener(e -> abrirPdf(a));
-            botones = Estilo.panel(new GridLayout(1, 2, 10, 0));
-            botones.add(abrir);
-            botones.add(subir);
-        } else {
-            botones = Estilo.panel(new BorderLayout());
-            botones.add(subir, BorderLayout.CENTER);
-        }
+        JPanel botones = Estilo.panel(new BorderLayout());
+        botones.add(subir, BorderLayout.CENTER);
 
         JPanel abajo = Estilo.panel(new BorderLayout(0, 8));
         abajo.add(botones, BorderLayout.NORTH);
         if (completo) {
-            JLabel nota = Estilo.secundario(entregada
-                    ? primerNombre(a) + " ya puede descargarla desde su menú."
-                    : primerNombre(a) + " podrá descargarla desde su menú en cuanto la apruebes.");
+            JLabel nota = Estilo.secundario(primerNombre(a) + " podrá descargarla desde su menú en cuanto la apruebes.");
             nota.setHorizontalAlignment(JLabel.CENTER);
             abajo.add(nota, BorderLayout.CENTER);
         }
@@ -390,13 +391,9 @@ public class AlumnosPanel extends JPanel {
     private static String lineaDeEstado(AlumnoActivo a) {
         if (a.getEstadoConstancia() != null) {
             switch (a.getEstadoConstancia()) {
-                case DISPONIBLE:
-                    return "Entregada el " + Formato.fechaHora(a.getFechaAprobacion()) + ".";
                 case SOLICITADA:
                 case VALIDADA:
                     return "La pidió el " + Formato.fechaHora(a.getFechaSolicitud()) + ".";
-                case RECHAZADA:
-                    return "Su solicitud anterior fue rechazada.";
                 default:
                     break;
             }
@@ -419,28 +416,26 @@ public class AlumnosPanel extends JPanel {
         }
         String programa = "practicas".equals(a.getTipoPrograma()) ? "prácticas" : "servicio social";
         String archivo = archivoElegido.getName() + "  ·  " + Formato.tamanoArchivo(archivoElegido.length());
-        boolean acepto = a.tieneConstancia()
-                ? Dialogos.confirmarAprobar(this, "¿Reemplazar la constancia?",
-                        a.getNombre() + " ya tiene su constancia. Se cambiará por este archivo:", archivo, "Reemplazar PDF")
-                : Dialogos.confirmarAprobar(this, "¿Subir y aprobar la constancia?",
-                        "Será la constancia de " + programa + " de " + a.getNombre()
-                        + " y podrá descargarla desde su menú.", archivo, "Subir y aprobar");
-        if (!acepto) {
+        if (!Dialogos.confirmarAprobar(this, "¿Subir y aprobar la constancia?",
+                "Será la constancia de " + programa + " de " + a.getNombre()
+                + " y podrá descargarla desde su menú.", archivo, "Subir y aprobar")) {
             return;
         }
         try {
             servicio.subirPdfYAprobar(a.getIdInscripcion(), archivoElegido);
-            Dialogos.exito(this, "Constancia aprobada", a.getNombre() + " ya puede descargarla desde su menú.");
+            Dialogos.exito(this, "Constancia aprobada", a.getNombre() + " ya puede descargarla desde su menú. "
+                    + "Desde ahora la encuentras en Historial de constancias.");
         } catch (ReglaNegocioException | SQLException | IOException e) {
             Dialogos.mostrarError(this, e);
         }
         recargar();
     }
 
-    private void abrirPdf(AlumnoActivo a) {
-        File pdf = PanelDocenteService.archivoDe(a.getRutaPdf());
+    /** Abre el PDF de una constancia con el programa de la computadora (también lo usa el historial). */
+    static void abrirPdf(Component padre, String ruta) {
+        File pdf = PanelDocenteService.archivoDe(ruta);
         if (pdf == null || !pdf.isFile()) {
-            Dialogos.aviso(this, "No se encontró el PDF",
+            Dialogos.aviso(padre, "No se encontró el PDF",
                     "El archivo de la constancia no está en esta computadora. Puedes volver a subirlo con Reemplazar PDF.",
                     pdf == null ? "(sin ruta guardada)" : pdf.getAbsolutePath());
             return;
@@ -449,11 +444,11 @@ public class AlumnosPanel extends JPanel {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
                 Desktop.getDesktop().open(pdf);
             } else {
-                Dialogos.info(this, "Ubicación del PDF", "Esta computadora no permite abrirlo desde aquí. Está en:",
+                Dialogos.info(padre, "Ubicación del PDF", "Esta computadora no permite abrirlo desde aquí. Está en:",
                         pdf.getAbsolutePath());
             }
         } catch (IOException e) {
-            Dialogos.mostrarError(this, e);
+            Dialogos.mostrarError(padre, e);
         }
     }
 
@@ -469,7 +464,8 @@ public class AlumnosPanel extends JPanel {
         }
         try {
             servicio.rechazarSolicitud(a.getIdSolicitud(), comentario);
-            Dialogos.exito(this, "Solicitud rechazada", a.getNombre() + " verá tu comentario en su sección de constancia.");
+            Dialogos.exito(this, "Solicitud rechazada", a.getNombre() + " verá tu motivo en su sección de constancia. "
+                    + "Desde ahora la encuentras en Historial de constancias.");
         } catch (ReglaNegocioException | SQLException e) {
             Dialogos.mostrarError(this, e);
         }
@@ -501,24 +497,16 @@ public class AlumnosPanel extends JPanel {
 
     /** Texto corto y color del estado para la lista de la izquierda. */
     private static String estadoCorto(AlumnoActivo a) {
-        if (a.tieneConstancia()) {
-            return "Entregada";
-        }
         if (a.horasCompletas()) {
             return "Lista";
         }
-        if (a.solicitudEnEspera()) {
-            return "Solicitada";
-        }
-        return a.getEstadoConstancia() == modelo.EstadoSolicitud.RECHAZADA ? "Rechazada" : "En curso";
+        return a.solicitudEnEspera() ? "Solicitada" : "En curso";
     }
 
     private static Color colorEstadoCorto(String estado) {
         return switch (estado) {
             case "Lista" -> Estilo.PRIMARIO;
             case "Solicitada" -> new Color(0xB45309);
-            case "Entregada" -> Estilo.EXITO;
-            case "Rechazada" -> Estilo.PELIGRO;
             default -> Estilo.TEXTO_SECUNDARIO;
         };
     }

@@ -54,12 +54,19 @@ public class EncabezadoApp extends JPanel {
         izquierda.add(javax.swing.Box.createHorizontalStrut(22));
         izquierda.add(navegacion);
 
-        JPanel derecha = Estilo.panel(new FlowLayout(FlowLayout.RIGHT, 14, 18));
-        derecha.add(Estilo.etiqueta(usuario, Estilo.fuente(Font.BOLD, 14), Estilo.TEXTO_SECUNDARIO));
-        derecha.add(cerrarSesion);
+        // El nombre usa el espacio que sobra: si la ventana es angosta se recorta con "…"
+        JLabel nombre = Estilo.etiqueta(usuario, Estilo.fuente(Font.BOLD, 14), Estilo.TEXTO_SECUNDARIO);
+        nombre.setHorizontalAlignment(JLabel.RIGHT);
+        nombre.setToolTipText(usuario);
+        JPanel enlace = Estilo.panel(new FlowLayout(FlowLayout.RIGHT, 0, 18));
+        enlace.add(cerrarSesion);
+        JPanel derecha = Estilo.panel(new BorderLayout(14, 0));
+        derecha.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
+        derecha.add(nombre, BorderLayout.CENTER);
+        derecha.add(enlace, BorderLayout.EAST);
 
         add(izquierda, BorderLayout.WEST);
-        add(derecha, BorderLayout.EAST);
+        add(derecha, BorderLayout.CENTER);
     }
 
     /** Agrega una pestaña. La clave es la que recibe alCambiarSeccion. */

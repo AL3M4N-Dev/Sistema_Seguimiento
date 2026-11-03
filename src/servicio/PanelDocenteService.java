@@ -22,6 +22,7 @@ import modelo.EstadoRegistro;
 import modelo.Evidencia;
 import modelo.Institucion;
 import modelo.RegistroHoras;
+import modelo.SolicitudConstancia;
 import modelo.Usuario;
 
 /**
@@ -35,6 +36,8 @@ import modelo.Usuario;
  *  - Solo se revisa lo que sigue pendiente (si alguien lo revisó antes, se avisa).
  *  - "Subir PDF y aprobar" solo se permite si las horas APROBADAS cubren las
  *    requeridas (se revisa en la base), y el archivo debe ser un PDF de máx. 10 MB.
+ *  - Si la solicitud de constancia fue rechazada, no se sube nada hasta que el
+ *    alumno la vuelva a pedir.
  */
 public class PanelDocenteService {
 
@@ -157,6 +160,7 @@ public class PanelDocenteService {
      * "Subir PDF y aprobar": guarda el PDF de la constancia y la deja disponible
      * para que el alumno la descargue. Funciona igual para servicio social y prácticas,
      * y aunque el alumno no la haya pedido. Si ya tenía una, la reemplaza.
+     * Si su solicitud fue RECHAZADA no se puede, hasta que el alumno la vuelva a pedir.
      *
      * El PDF se copia a archivos/constancias/constancia_<id_inscripcion>.pdf y esa
      * ruta se guarda en solicitudes_constancia.ruta_pdf.
@@ -171,6 +175,10 @@ public class PanelDocenteService {
             throw new ReglaNegocioException("Todavía no se puede: " + a.getNombre() + " lleva "
                     + texto(a.getHorasAprobadas()) + " de " + a.getHorasRequeridas() + " horas aprobadas.");
         }
+        if (a.solicitudRechazada()) {
+            throw new ReglaNegocioException("La solicitud de " + a.getNombre() + " fue rechazada. "
+                    + "Podrás subir su constancia cuando la vuelva a solicitar.");
+        }
         validarPdf(pdf);
 
         String rutaRelativa = CARPETA_CONSTANCIAS + "/constancia_" + idInscripcion + ".pdf";
@@ -183,12 +191,18 @@ public class PanelDocenteService {
             solicitudes.aprobarConPdf(idInscripcion, usuario.getIdUsuario(), rutaRelativa);
         } catch (SQLIntegrityConstraintViolationException e) {
             Files.deleteIfExists(temporal);
-            throw new ReglaNegocioException("Alguien más acaba de aprobar esta constancia. Actualiza la lista.");
+            throw new ReglaNegocioException("La constancia de este alumno cambió mientras tanto "
+                    + "(alguien más la aprobó o la rechazó). Actualiza la lista.");
         } catch (SQLException e) {
             Files.deleteIfExists(temporal);
             throw e;
         }
         Files.move(temporal, destino, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    /** Historial de constancias de sus alumnos: las ya aprobadas o rechazadas. */
+    public List<SolicitudConstancia> historialConstancias() throws SQLException {
+        return solicitudes.listarHistorial(filtroDocente());
     }
 
     /** Rechaza la solicitud que hizo el alumno; el comentario es obligatorio. */

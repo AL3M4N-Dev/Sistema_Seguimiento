@@ -19,9 +19,7 @@ import java.io.File;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.TransferHandler;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  * Zona punteada para ARRASTRAR un archivo o hacer clic y elegirlo.
@@ -40,6 +38,8 @@ public class ZonaArchivo extends JComponent {
     private String detalle;
     private File archivo;
     private Consumer<File> alElegir = f -> { };
+    private String tituloSelector = "Elegir archivo";
+    private String subtituloSelector;
 
     public ZonaArchivo(String titulo, String detalle, String descripcionFiltro, String... extensiones) {
         this.tituloVacio = titulo;
@@ -99,12 +99,19 @@ public class ZonaArchivo extends JComponent {
         repaint();
     }
 
-    /** Abre el selector de archivos de la computadora. */
+    /** Título y texto de la ventana para elegir el archivo (por defecto "Elegir archivo"). */
+    public void setTituloSelector(String titulo, String subtitulo) {
+        this.tituloSelector = titulo;
+        this.subtituloSelector = subtitulo;
+    }
+
+    /** Abre la ventana para elegir el archivo (con el diseño base y centrada). */
     public void elegirConDialogo() {
-        JFileChooser selector = new JFileChooser();
-        selector.setFileFilter(new FileNameExtensionFilter(descripcionFiltro, extensiones));
-        if (selector.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            recibir(selector.getSelectedFile());
+        File elegido = SelectorArchivo.abrir(this, tituloSelector,
+                subtituloSelector != null ? subtituloSelector : "Solo se aceptan " + descripcionFiltro.toLowerCase() + ".",
+                descripcionFiltro, extensiones);
+        if (elegido != null) {
+            recibir(elegido);
         }
     }
 

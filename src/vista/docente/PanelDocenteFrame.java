@@ -14,7 +14,7 @@ import vista.comun.Estilo;
 
 /**
  * Ventana principal del docente y del responsable de área (parte 5), con el diseño base:
- * encabezado con pestañas (Registros · Alumnos y constancias · Instituciones).
+ * encabezado con pestañas (Registros · Alumnos y constancias · Historial de constancias · Instituciones).
  *
  * Desde el inicio de sesión se abre así, cuando el usuario es docente o responsable:
  *     new PanelDocenteFrame().setVisible(true);      // usa Sesion.getUsuario()
@@ -26,6 +26,7 @@ public class PanelDocenteFrame extends JFrame {
 
     private static final String REGISTROS = "registros";
     private static final String ALUMNOS = "alumnos";
+    private static final String HISTORIAL = "historial";
     private static final String INSTITUCIONES = "instituciones";
 
     private final PanelDocenteService servicio;
@@ -46,6 +47,7 @@ public class PanelDocenteFrame extends JFrame {
 
         RegistrosPanel registros = new RegistrosPanel(servicio);
         AlumnosPanel alumnos = new AlumnosPanel(servicio);
+        HistorialConstanciasPanel historial = new HistorialConstanciasPanel(servicio);
         InstitucionesPanel instituciones = new InstitucionesPanel(servicio);
 
         CardLayout tarjetas = new CardLayout();
@@ -53,12 +55,14 @@ public class PanelDocenteFrame extends JFrame {
         contenido.setBackground(Estilo.FONDO);
         contenido.add(registros, REGISTROS);
         contenido.add(alumnos, ALUMNOS);
+        contenido.add(historial, HISTORIAL);
         contenido.add(instituciones, INSTITUCIONES);
 
         String rol = usuario.esResponsable() ? "Responsable de área" : "Docente";
         encabezado = new EncabezadoApp(usuario.getNombre() + " · " + rol);
         encabezado.agregarSeccion(REGISTROS, "Registros");
         encabezado.agregarSeccion(ALUMNOS, "Alumnos y constancias");
+        encabezado.agregarSeccion(HISTORIAL, "Historial de constancias");
         encabezado.agregarSeccion(INSTITUCIONES, "Instituciones");
         // Al cambiar de sección se vuelve a leer la base y se actualizan los contadores
         encabezado.alCambiarSeccion(clave -> {
@@ -66,6 +70,7 @@ public class PanelDocenteFrame extends JFrame {
             switch (clave) {
                 case REGISTROS -> registros.recargar();
                 case ALUMNOS -> alumnos.recargar();
+                case HISTORIAL -> historial.recargar();
                 default -> instituciones.recargar();
             }
             actualizarContadores();
@@ -81,8 +86,10 @@ public class PanelDocenteFrame extends JFrame {
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setMinimumSize(new Dimension(1120, 700));
-        setSize(1280, 800);
+        setSize(1280, 800);                 // tamaño al "restaurar" la ventana
         setLocationRelativeTo(null);
+        // Se abre en pantalla completa (maximizada), con la barra de Windows para minimizar o cerrar
+        Estilo.pantallaCompleta(this);
     }
 
     /** Qué hacer después de cerrar sesión (por ejemplo, abrir otra vez el login). */

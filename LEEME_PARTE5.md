@@ -7,13 +7,18 @@ Todas las ventanas que se abren (avisos, preguntas, detalle del registro, fotos)
 
 ## Qué hace
 
-El docente y el responsable de área entran a una ventana con 3 secciones en la barra de arriba:
+El docente y el responsable de área entran a una ventana con 4 secciones en la barra de arriba:
 
 | Sección | Qué hace |
 |---|---|
 | **Registros** | Bandeja para aprobar o rechazar los turnos (con reporte y fotos). El rechazo pide comentario. El número junto al nombre indica cuántos turnos están pendientes. |
-| **Alumnos y constancias** | A la izquierda, la lista de alumnos de **servicio social y prácticas** con su avance, un buscador y filtros. A la derecha, el detalle del alumno: sus horas, sus últimos turnos y su constancia. Cuando completa sus horas, se puede **arrastrar el PDF** (o hacer clic para elegirlo) y **Subir PDF y aprobar**. |
+| **Alumnos y constancias** | Los alumnos de **servicio social y prácticas** cuya constancia **sigue por resolver**, con su avance, un buscador y filtros. A la derecha, el detalle del alumno: sus horas, sus últimos turnos y su constancia. Cuando completa sus horas, se puede **arrastrar el PDF** (o hacer clic para elegirlo) y **Subir PDF y aprobar**. En cuanto se **aprueba o se rechaza**, el alumno sale de aquí y queda solo en el historial. |
+| **Historial de constancias** | Las constancias ya resueltas, con filtros **Aprobadas** y **Rechazadas**, buscador, fechas, quién la revisó y el motivo del rechazo. Doble clic: detalle; si está aprobada, **Abrir PDF** y **Reemplazar PDF**. |
 | **Instituciones** | Las instituciones de prácticas que dieron de alta los alumnos, para aprobarlas o rechazarlas. |
+
+- Si se **rechaza la solicitud** de un alumno, ya no se le puede subir el PDF (el servicio también lo impide) hasta que el alumno la **vuelva a solicitar**. Cuando la vuelve a pedir, regresa a **Alumnos y constancias** y sale del historial.
+- El historial muestra el **estado actual** de la constancia de cada alumno (hay una fila por inscripción en `solicitudes_constancia`).
+- Al elegir el usuario, la ventana se abre en **pantalla completa** (maximizada). **Cerrar sesión** vuelve a la lista para entrar con otro usuario.
 
 - El **docente** ve a sus alumnos asignados (`inscripciones.id_docente`) y a los que aún no tienen docente.
 - El **responsable de área** ve a todos.
@@ -32,9 +37,11 @@ src/servicio/   PanelDocenteService, ConstanciaAlumnoService (todas las reglas),
 src/vista/comun/    DISEÑO BASE para todo el equipo: Estilo, Boton, Tarjeta, Chip, ChipFiltro,
                     Avatar, BarraProgreso, CampoBusqueda, ZonaArchivo, EncabezadoApp,
                     EstadoRenderer, ListaTableModel, Formato (y Avance/AvanceRenderer)
-                    Ventanas: VentanaDialogo, Dialogos, AreaTexto, TextoAjustado, BarraDesplazamiento
+                    Ventanas: VentanaDialogo, Dialogos, SelectorArchivo, AreaTexto, TextoAjustado,
+                    BarraDesplazamiento
 src/vista/docente/  PanelDocenteFrame, RegistrosPanel, DetalleRegistroDialog, AlumnosPanel,
-                    RegistrosAlumnoDialog, InstitucionesPanel, PruebaPanelDocente (solo para probar)
+                    RegistrosAlumnoDialog, HistorialConstanciasPanel, InstitucionesPanel,
+                    PruebaPanelDocente (solo para probar)
 src/vista/alumno/   ConstanciaAlumnoPanel, PruebaConstanciaAlumno (solo para probar)
 bd/             datos_prueba_parte5.sql, borrar_datos_prueba_parte5.sql
 ```
@@ -48,14 +55,19 @@ bd/             datos_prueba_parte5.sql, borrar_datos_prueba_parte5.sql
 
 | Prueba | Qué debe pasar |
 |---|---|
-| Abrir **Alumnos y constancias** | Arriba de la lista aparecen primero los que ya pueden recibir su constancia (Daniela, Luis) |
+| Elegir un usuario en **PruebaPanelDocente** | El panel se abre en pantalla completa |
+| Abrir **Alumnos y constancias** | Arriba de la lista aparecen primero los que ya pueden recibir su constancia (Daniela, Luis). No salen las ya aprobadas ni las rechazadas |
 | Seleccionar a Ana López (8 de 480 h) | La zona del PDF y **Subir PDF y aprobar** están bloqueadas: "Le faltan 472 h aprobadas" |
-| Daniela Ortiz (**prácticas**, 480 h) → arrastrar un PDF a la zona → **Subir PDF y aprobar** | Pasa a "Entregada" y aparecen **Abrir PDF** y **Reemplazar PDF** |
-| Valeria Núñez (servicio social, 480 h) → **Subir PDF y aprobar** sin arrastrar nada | Se abre el selector de archivos para elegir el PDF |
+| Daniela Ortiz (**prácticas**, 480 h) → arrastrar un PDF a la zona → **Subir PDF y aprobar** | Daniela sale de la lista y aparece en **Historial de constancias → Aprobadas** |
+| Valeria Núñez (servicio social, 480 h) → **Subir PDF y aprobar** sin arrastrar nada | Se abre la ventana para elegir el PDF, **centrada** y con el diseño del programa |
 | Luis Herrera (pidió su constancia) → **Rechazar solicitud** sin comentario | La ventana no se cierra: el campo se pone en rojo ("Escribe el motivo; el alumno lo leerá.") |
+| Luis Herrera → **Rechazar solicitud** con motivo | Luis sale de la lista y aparece en **Historial → Rechazadas** con el motivo |
+| **Historial de constancias** → filtros **Aprobadas / Rechazadas** | La tabla se filtra; el número de cada filtro dice cuántas hay |
+| Historial → doble clic en una aprobada → **Abrir PDF** o **Reemplazar PDF** | Se abre la constancia, o se elige otro PDF (pregunta antes de reemplazar) |
 | En cualquier aviso: **Esc**, la **X** o **Enter** | Esc y la X cierran; Enter presiona el botón principal (en un rechazo, Enter = Cancelar) |
 | Arrastrar un archivo que no es PDF | La zona avisa: "Ese archivo no se puede usar · Solo se aceptan archivos pdf" y no lo acepta |
 | **Ver todos sus registros** | Ventana con todos los turnos del alumno y su estado |
+| Alumno: `PruebaConstanciaAlumno.java` → **Run File** → elegir alumno | Se abre en pantalla completa con la barra de arriba del diseño |
 | Filtro **Prácticas** o escribir en **Buscar** | La lista se filtra al momento |
 | Alumno: `src/vista/alumno/PruebaConstanciaAlumno.java` → **Run File** → Daniela | Le aparece **Descargar constancia en PDF** |
 

@@ -14,7 +14,6 @@ import java.sql.SQLException;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import modelo.EstadoSolicitud;
@@ -24,6 +23,7 @@ import servicio.ConstanciaAlumnoService;
 import servicio.ReglaNegocioException;
 import util.Sesion;
 import vista.comun.Dialogos;
+import vista.comun.SelectorArchivo;
 import vista.comun.Estilo;
 import vista.comun.Formato;
 import vista.comun.BarraProgreso;
@@ -174,16 +174,18 @@ public class ConstanciaAlumnoPanel extends Tarjeta {
     }
 
     private void descargar() {
-        JFileChooser selector = new JFileChooser();
-        selector.setDialogTitle("Guardar mi constancia");
-        selector.setSelectedFile(new File("constancia_" + servicio.getAlumno().getNombre().replaceAll("\\W+", "_") + ".pdf"));
-        if (selector.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+        // "Valeria Núñez" → constancia_Valeria_Nunez.pdf
+        String nombre = java.text.Normalizer.normalize(servicio.getAlumno().getNombre(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").replaceAll("[^A-Za-z0-9]+", "_");
+        File destino = SelectorArchivo.guardar(this, "Guardar mi constancia",
+                "Elige la carpeta de tu computadora donde quieres guardar el PDF.",
+                new File("constancia_" + nombre + ".pdf"), "Archivos PDF", "pdf");
+        if (destino == null) {
             return;
         }
         try {
-            servicio.descargar(selector.getSelectedFile());
-            Dialogos.exito(this, "Constancia guardada", "Tu constancia se guardó en:",
-                    selector.getSelectedFile().getAbsolutePath());
+            servicio.descargar(destino);
+            Dialogos.exito(this, "Constancia guardada", "Tu constancia se guardó en:", destino.getAbsolutePath());
         } catch (ReglaNegocioException | SQLException | IOException e) {
             Dialogos.mostrarError(this, e);
         }

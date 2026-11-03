@@ -22,7 +22,7 @@ public class AlumnoActivoDAO {
             + "       i.id_inscripcion, i.estado AS estado_inscripcion, ins.nombre AS institucion, "
             + "       d.nombre AS docente, p.horas_requeridas, p.horas_aprobadas, p.horas_pendientes, "
             + "       s.id_solicitud, s.estado AS estado_solicitud, s.ruta_pdf, s.fecha_solicitud, "
-            + "       s.fecha_validacion "
+            + "       s.fecha_validacion, s.comentario AS comentario_solicitud "
             + "FROM inscripciones i "
             + "JOIN usuarios u          ON u.id_usuario = i.id_alumno "
             + "JOIN instituciones ins   ON ins.id_institucion = i.id_institucion "
@@ -93,6 +93,7 @@ public class AlumnoActivoDAO {
         a.setFechaSolicitud(solicitada == null ? null : solicitada.toLocalDateTime());
         Timestamp aprobada = rs.getTimestamp("fecha_validacion");
         a.setFechaAprobacion(aprobada == null ? null : aprobada.toLocalDateTime());
+        a.setComentarioConstancia(rs.getString("comentario_solicitud"));
         return a;
     }
 }

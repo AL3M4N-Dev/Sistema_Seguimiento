@@ -28,6 +28,7 @@ public class AlumnoActivo {
     private String rutaPdf;
     private LocalDateTime fechaSolicitud;
     private LocalDateTime fechaAprobacion;
+    private String comentarioConstancia;
 
     /** true cuando las horas aprobadas alcanzan las requeridas (100%). */
     public boolean horasCompletas() {
@@ -38,6 +39,19 @@ public class AlumnoActivo {
     /** true si ya se le subió su constancia en PDF. */
     public boolean tieneConstancia() {
         return estadoConstancia == EstadoSolicitud.DISPONIBLE;
+    }
+
+    /** true si se rechazó su solicitud y todavía no la vuelve a pedir. */
+    public boolean solicitudRechazada() {
+        return estadoConstancia == EstadoSolicitud.RECHAZADA;
+    }
+
+    /**
+     * true si ya se le puede subir su constancia: completó sus horas y su solicitud
+     * no está rechazada (si se rechazó, primero tiene que volver a pedirla).
+     */
+    public boolean puedeRecibirConstancia() {
+        return horasCompletas() && !solicitudRechazada();
     }
 
     /** true si el alumno pidió su constancia y está esperando respuesta. */
@@ -200,6 +214,16 @@ public class AlumnoActivo {
         this.fechaSolicitud = fechaSolicitud;
     }
 
+    /** Motivo que escribió el docente al rechazar la solicitud (o null). */
+    public String getComentarioConstancia() {
+        return comentarioConstancia;
+    }
+
+    public void setComentarioConstancia(String comentarioConstancia) {
+        this.comentarioConstancia = comentarioConstancia;
+    }
+
+    /** Fecha en que se revisó la constancia: cuando se aprobó o cuando se rechazó. */
     public LocalDateTime getFechaAprobacion() {
         return fechaAprobacion;
     }

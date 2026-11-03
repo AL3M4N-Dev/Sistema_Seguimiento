@@ -128,13 +128,13 @@ public final class Estilo {
      */
     public static Color[] coloresEstado(String etiqueta) {
         String e = etiqueta == null ? "" : etiqueta.toLowerCase();
-        if (e.equals("pendiente") || e.equals("solicitada")) {
+        if (e.equals("pendiente") || e.equals("solicitada") || e.equals("en espera")) {
             return new Color[]{PENDIENTE_FONDO, PENDIENTE_TEXTO};
         }
         if (e.equals("validada") || e.startsWith("lista")) {
             return new Color[]{VALIDADA_FONDO, VALIDADA_TEXTO};
         }
-        if (e.equals("aprobado") || e.equals("disponible") || e.equals("entregada") || e.equals("sí")) {
+        if (e.equals("aprobado") || e.equals("aprobada") || e.equals("disponible") || e.equals("entregada") || e.equals("sí")) {
             return new Color[]{APROBADO_FONDO, APROBADO_TEXTO};
         }
         if (e.equals("rechazado") || e.equals("rechazada") || e.startsWith("no,")) {
@@ -266,6 +266,23 @@ public final class Estilo {
         tabla.getTableHeader().setDefaultRenderer(encabezado);
         tabla.getTableHeader().setPreferredSize(new Dimension(10, 38));
         tabla.getTableHeader().setReorderingAllowed(false);
+    }
+
+    /**
+     * Pone una ventana principal en pantalla completa (maximizada): ocupa toda la pantalla
+     * y conserva la barra de Windows para minimizar o cerrar. Llamarlo antes de setVisible.
+     * Al "restaurar", la ventana vuelve al tamaño que tenía (setSize).
+     */
+    public static void pantallaCompleta(java.awt.Frame ventana) {
+        if (java.awt.Toolkit.getDefaultToolkit().isFrameStateSupported(java.awt.Frame.MAXIMIZED_BOTH)) {
+            ventana.setExtendedState(ventana.getExtendedState() | java.awt.Frame.MAXIMIZED_BOTH);
+            return;
+        }
+        // Si el sistema no permite maximizar, se le da el tamaño de la pantalla (sin la barra de tareas)
+        java.awt.GraphicsConfiguration gc = ventana.getGraphicsConfiguration();
+        java.awt.Rectangle r = gc.getBounds();
+        java.awt.Insets in = java.awt.Toolkit.getDefaultToolkit().getScreenInsets(gc);
+        ventana.setBounds(r.x + in.left, r.y + in.top, r.width - in.left - in.right, r.height - in.top - in.bottom);
     }
 
     /** Margen interior estándar. */

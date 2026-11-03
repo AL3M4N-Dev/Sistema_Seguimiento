@@ -46,7 +46,9 @@ public class PruebaPanelDocente {
                 "Entrar");
         if (elegido != null) {
             Sesion.iniciar(elegido);
-            new PanelDocenteFrame().setVisible(true);
+            PanelDocenteFrame panel = new PanelDocenteFrame();          // se abre en pantalla completa
+            panel.setAccionCerrarSesion(PruebaPanelDocente::iniciar);   // "Cerrar sesión" vuelve a esta lista
+            panel.setVisible(true);
         }
     }
 

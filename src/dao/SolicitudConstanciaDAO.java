@@ -5,6 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 import modelo.EstadoSolicitud;
 import modelo.SolicitudConstancia;
 import util.Conexion;
@@ -19,12 +21,41 @@ public class SolicitudConstanciaDAO {
     private static final String SELECT_BASE =
             "SELECT s.id_solicitud, s.id_inscripcion, u.nombre AS alumno, u.matricula, ins.tipo, "
             + "       ins.nombre AS institucion, s.fecha_solicitud, s.estado, s.comentario, "
-            + "       s.ruta_pdf, s.fecha_validacion, p.horas_requeridas, p.horas_aprobadas "
+            + "       s.ruta_pdf, s.fecha_validacion, p.horas_requeridas, p.horas_aprobadas, "
+            + "       rev.nombre AS revisor "
             + "FROM solicitudes_constancia s "
             + "JOIN inscripciones i     ON i.id_inscripcion = s.id_inscripcion "
             + "JOIN usuarios u          ON u.id_usuario = i.id_alumno "
             + "JOIN instituciones ins   ON ins.id_institucion = i.id_institucion "
-            + "JOIN v_progreso_alumno p ON p.id_inscripcion = s.id_inscripcion ";
+            + "JOIN v_progreso_alumno p ON p.id_inscripcion = s.id_inscripcion "
+            + "LEFT JOIN usuarios rev   ON rev.id_usuario = s.id_responsable ";
+
+    /**
+     * Historial: las constancias ya resueltas (aprobadas o rechazadas), la más reciente primero.
+     * Las que siguen en espera no salen aquí.
+     *
+     * @param idDocente si no es null, solo las de los alumnos de ese docente (o sin docente).
+     *                  null = todas (responsable de área).
+     */
+    public List<SolicitudConstancia> listarHistorial(Integer idDocente) throws SQLException {
+        String sql = SELECT_BASE
+                + "WHERE s.estado IN ('disponible', 'rechazada') "
+                + (idDocente == null ? "" : "AND (i.id_docente = ? OR i.id_docente IS NULL) ")
+                + "ORDER BY COALESCE(s.fecha_validacion, s.fecha_solicitud) DESC, s.id_solicitud DESC";
+        List<SolicitudConstancia> lista = new ArrayList<>();
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            if (idDocente != null) {
+                ps.setInt(1, idDocente);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapear(rs));
+                }
+            }
+        }
+        return lista;
+    }
 
     /** La solicitud de una inscripción, o null si todavía no existe. */
     public SolicitudConstancia buscarPorInscripcion(int idInscripcion) throws SQLException {
@@ -41,12 +72,13 @@ public class SolicitudConstanciaDAO {
      * Docente o responsable: guarda la ruta del PDF y deja la constancia 'disponible'
      * para que el alumno la descargue. Si el alumno no la había pedido, se crea la fila.
      * También marca la inscripción como 'completada'. Todo pasa junto o nada.
+     * Una solicitud RECHAZADA no se toca: el alumno tiene que volver a pedirla.
      */
     public void aprobarConPdf(int idInscripcion, int idRevisor, String rutaPdf) throws SQLException {
         String actualizar = "UPDATE solicitudes_constancia "
                 + "SET estado = 'disponible', ruta_pdf = ?, id_responsable = ?, "
                 + "    fecha_validacion = NOW(), comentario = NULL "
-                + "WHERE id_inscripcion = ?";
+                + "WHERE id_inscripcion = ? AND estado <> 'rechazada'";
         String crear = "INSERT INTO solicitudes_constancia "
                 + "(id_inscripcion, estado, id_responsable, fecha_validacion, ruta_pdf) "
                 + "VALUES (?, 'disponible', ?, NOW(), ?)";
@@ -75,10 +107,13 @@ public class SolicitudConstanciaDAO {
         }
     }
 
-    /** Docente o responsable: solicitada o validada → rechazada, con el motivo para el alumno. */
+    /**
+     * Docente o responsable: solicitada o validada → rechazada, con el motivo para el alumno.
+     * fecha_validacion guarda cuándo se revisó (sirve para el historial).
+     */
     public boolean rechazar(int idSolicitud, int idRevisor, String comentario) throws SQLException {
         String sql = "UPDATE solicitudes_constancia "
-                + "SET estado = 'rechazada', id_responsable = ?, comentario = ? "
+                + "SET estado = 'rechazada', id_responsable = ?, comentario = ?, fecha_validacion = NOW() "
                 + "WHERE id_solicitud = ? AND estado IN ('solicitada', 'validada')";
         try (Connection con = Conexion.getConexion();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -132,6 +167,7 @@ public class SolicitudConstanciaDAO {
         s.setFechaValidacion(validada == null ? null : validada.toLocalDateTime());
         s.setHorasRequeridas(rs.getInt("horas_requeridas"));
         s.setHorasAprobadas(rs.getBigDecimal("horas_aprobadas"));
+        s.setRevisorNombre(rs.getString("revisor"));
         return s;
     }
 }

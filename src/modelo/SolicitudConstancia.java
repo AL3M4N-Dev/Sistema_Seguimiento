@@ -22,6 +22,28 @@ public class SolicitudConstancia {
     private String comentario;
     private String rutaPdf;
     private LocalDateTime fechaValidacion;
+    private String revisorNombre;
+
+    /** Estado para el historial: "Aprobada", "Rechazada" o "En espera". */
+    public String textoHistorial() {
+        if (estado == null) {
+            return "";
+        }
+        return switch (estado) {
+            case DISPONIBLE -> "Aprobada";
+            case RECHAZADA -> "Rechazada";
+            case SOLICITADA, VALIDADA -> "En espera";
+        };
+    }
+
+    /** Nombre de quien aprobó o rechazó (o null si nadie la ha revisado). */
+    public String getRevisorNombre() {
+        return revisorNombre;
+    }
+
+    public void setRevisorNombre(String revisorNombre) {
+        this.revisorNombre = revisorNombre;
+    }
 
     /** true cuando las horas aprobadas alcanzan las requeridas. */
     public boolean horasCompletas() {
