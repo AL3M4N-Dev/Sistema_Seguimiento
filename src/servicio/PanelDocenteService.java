@@ -1,5 +1,6 @@
 package servicio;
 
+import dao.AlumnoActivoDAO;
 import dao.EvidenciaDAO;
 import dao.InstitucionDAO;
 import dao.RegistroHorasDAO;
@@ -11,17 +12,16 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.Arrays;
 import java.util.List;
+import modelo.AlumnoActivo;
 import modelo.EstadoRegistro;
-import modelo.EstadoSolicitud;
 import modelo.Evidencia;
 import modelo.Institucion;
 import modelo.RegistroHoras;
-import modelo.SolicitudConstancia;
 import modelo.Usuario;
 
 /**
@@ -29,12 +29,12 @@ import modelo.Usuario;
  * Las pantallas llaman a esta clase, nunca directo a los DAO, para que las reglas
  * se cumplan siempre:
  *
+ *  - El docente ve a sus alumnos (inscripciones.id_docente) y a los que no tienen
+ *    docente asignado; el responsable de área ve a todos.
  *  - Rechazar un registro o una solicitud de constancia exige comentario.
  *  - Solo se revisa lo que sigue pendiente (si alguien lo revisó antes, se avisa).
- *  - El docente ve los registros de sus alumnos (inscripciones.id_docente) y los
- *    que no tienen docente asignado; el responsable de área ve todos.
- *  - Solo el responsable de área valida y sube constancias. Se valida solo si las
- *    horas aprobadas cubren las requeridas, y el archivo debe ser un PDF de máx. 10 MB.
+ *  - "Subir PDF y aprobar" solo se permite si las horas APROBADAS cubren las
+ *    requeridas (se revisa en la base), y el archivo debe ser un PDF de máx. 10 MB.
  */
 public class PanelDocenteService {
 
@@ -47,6 +47,7 @@ public class PanelDocenteService {
     private final RegistroHorasDAO registros = new RegistroHorasDAO();
     private final EvidenciaDAO evidencias = new EvidenciaDAO();
     private final InstitucionDAO instituciones = new InstitucionDAO();
+    private final AlumnoActivoDAO alumnos = new AlumnoActivoDAO();
     private final SolicitudConstanciaDAO solicitudes = new SolicitudConstanciaDAO();
 
     public PanelDocenteService(Usuario usuario) {
@@ -57,8 +58,9 @@ public class PanelDocenteService {
         return usuario;
     }
 
-    public boolean puedeGestionarConstancias() {
-        return usuario.esResponsable();
+    /** null = ver a todos (responsable); si no, el id del docente para filtrar. */
+    private Integer filtroDocente() {
+        return usuario.esResponsable() ? null : usuario.getIdUsuario();
     }
 
     // ------------------------------------------------------------------
@@ -66,8 +68,7 @@ public class PanelDocenteService {
     // ------------------------------------------------------------------
 
     public List<RegistroHoras> listarRegistros(EstadoRegistro estado) throws SQLException {
-        Integer idDocente = usuario.esResponsable() ? null : usuario.getIdUsuario();
-        return registros.listarPorEstado(estado, idDocente);
+        return registros.listarPorEstado(estado, filtroDocente());
     }
 
     public RegistroHoras obtenerRegistro(int idRegistro) throws SQLException {
@@ -98,18 +99,6 @@ public class PanelDocenteService {
         }
     }
 
-    /**
-     * Devuelve el archivo de una evidencia. Si la ruta guardada es relativa,
-     * se busca dentro de la carpeta del proyecto.
-     */
-    public static File archivoDe(String ruta) {
-        if (ruta == null) {
-            return null;
-        }
-        File f = new File(ruta);
-        return f.isAbsolute() ? f : new File(System.getProperty("user.dir"), ruta);
-    }
-
     // ------------------------------------------------------------------
     // Instituciones de prácticas
     // ------------------------------------------------------------------
@@ -131,88 +120,75 @@ public class PanelDocenteService {
     }
 
     // ------------------------------------------------------------------
-    // Constancias (solo responsable de área)
+    // Alumnos y constancias
     // ------------------------------------------------------------------
 
-    /** @param estado el filtro, o null para ver todas */
-    public List<SolicitudConstancia> listarSolicitudes(EstadoSolicitud estado) throws SQLException {
-        return solicitudes.listar(estado);
+    /** Alumnos activos (servicio social y prácticas) con su avance y su constancia. */
+    public List<AlumnoActivo> listarAlumnos() throws SQLException {
+        return alumnos.listar(filtroDocente());
     }
 
     /**
-     * Paso 1: el responsable confirma que las horas están completas.
-     * Vuelve a leer las horas de la base en lugar de confiar en lo que muestra la pantalla.
+     * "Subir PDF y aprobar": guarda el PDF de la constancia y la deja disponible
+     * para que el alumno la descargue. Funciona igual para servicio social y prácticas,
+     * y aunque el alumno no la haya pedido. Si ya tenía una, la reemplaza.
+     *
+     * El PDF se copia a archivos/constancias/constancia_<id_inscripcion>.pdf y esa
+     * ruta se guarda en solicitudes_constancia.ruta_pdf.
      */
-    public void validarHoras(int idSolicitud) throws ReglaNegocioException, SQLException {
-        exigirResponsable();
-        SolicitudConstancia s = solicitudVigente(idSolicitud);
-        if (s.getEstado() != EstadoSolicitud.SOLICITADA) {
-            throw new ReglaNegocioException("Esta solicitud ya está " + s.getEstado().toString().toLowerCase() + ".");
+    public void subirPdfYAprobar(int idInscripcion, File pdf) throws ReglaNegocioException, SQLException, IOException {
+        // Se vuelve a leer de la base: no se confía en lo que muestra la tabla
+        AlumnoActivo a = alumnos.buscarPorInscripcion(idInscripcion, filtroDocente());
+        if (a == null) {
+            throw new ReglaNegocioException("No se encontró al alumno, o no lo tienes asignado.");
         }
-        if (!s.horasCompletas()) {
-            throw new ReglaNegocioException("No se puede validar: el alumno lleva "
-                    + texto(s.getHorasAprobadas()) + " de " + s.getHorasRequeridas() + " horas aprobadas.");
-        }
-        if (!solicitudes.validar(idSolicitud, usuario.getIdUsuario())) {
-            throw new ReglaNegocioException("Esta solicitud ya fue revisada. Actualiza la lista.");
-        }
-    }
-
-    /**
-     * Paso 2: sube el PDF de una solicitud validada. El archivo se copia a
-     * archivos/constancias/constancia_<id>.pdf y esa ruta se guarda en la base.
-     */
-    public void subirConstancia(int idSolicitud, File pdf) throws ReglaNegocioException, SQLException, IOException {
-        exigirResponsable();
-        SolicitudConstancia s = solicitudVigente(idSolicitud);
-        if (s.getEstado() == EstadoSolicitud.SOLICITADA) {
-            throw new ReglaNegocioException("Primero valida las horas de esta solicitud.");
-        }
-        if (s.getEstado() != EstadoSolicitud.VALIDADA) {
-            throw new ReglaNegocioException("Esta solicitud ya está " + s.getEstado().toString().toLowerCase() + ".");
+        if (!a.horasCompletas()) {
+            throw new ReglaNegocioException("Todavía no se puede: " + a.getNombre() + " lleva "
+                    + texto(a.getHorasAprobadas()) + " de " + a.getHorasRequeridas() + " horas aprobadas.");
         }
         validarPdf(pdf);
 
-        String rutaRelativa = CARPETA_CONSTANCIAS + "/constancia_" + idSolicitud + ".pdf";
+        String rutaRelativa = CARPETA_CONSTANCIAS + "/constancia_" + idInscripcion + ".pdf";
         Path destino = archivoDe(rutaRelativa).toPath();
         Files.createDirectories(destino.getParent());
-        Files.copy(pdf.toPath(), destino, StandardCopyOption.REPLACE_EXISTING);
+        // Primero se copia a un temporal: si falla la base, el PDF anterior (si había) no se pierde
+        Path temporal = destino.resolveSibling(destino.getFileName() + ".tmp");
+        Files.copy(pdf.toPath(), temporal, StandardCopyOption.REPLACE_EXISTING);
         try {
-            if (!solicitudes.marcarDisponible(idSolicitud, s.getIdInscripcion(), usuario.getIdUsuario(), rutaRelativa)) {
-                Files.deleteIfExists(destino);
-                throw new ReglaNegocioException("Esta solicitud ya fue revisada. Actualiza la lista.");
-            }
+            solicitudes.aprobarConPdf(idInscripcion, usuario.getIdUsuario(), rutaRelativa);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            Files.deleteIfExists(temporal);
+            throw new ReglaNegocioException("Alguien más acaba de aprobar esta constancia. Actualiza la lista.");
         } catch (SQLException e) {
-            Files.deleteIfExists(destino);
+            Files.deleteIfExists(temporal);
             throw e;
         }
+        Files.move(temporal, destino, StandardCopyOption.REPLACE_EXISTING);
     }
 
+    /** Rechaza la solicitud que hizo el alumno; el comentario es obligatorio. */
     public void rechazarSolicitud(int idSolicitud, String comentario) throws ReglaNegocioException, SQLException {
-        exigirResponsable();
         String limpio = comentarioObligatorio(comentario, "rechazar la solicitud");
         if (!solicitudes.rechazar(idSolicitud, usuario.getIdUsuario(), limpio)) {
             throw new ReglaNegocioException("Esta solicitud ya no se puede rechazar. Actualiza la lista.");
         }
     }
 
+    /**
+     * Devuelve el archivo de una ruta guardada en la base (evidencias o constancias).
+     * Si la ruta es relativa, se busca dentro de la carpeta del proyecto.
+     */
+    public static File archivoDe(String ruta) {
+        if (ruta == null) {
+            return null;
+        }
+        File f = new File(ruta);
+        return f.isAbsolute() ? f : new File(System.getProperty("user.dir"), ruta);
+    }
+
     // ------------------------------------------------------------------
     // Validaciones
     // ------------------------------------------------------------------
-
-    private void exigirResponsable() throws ReglaNegocioException {
-        if (!usuario.esResponsable()) {
-            throw new ReglaNegocioException("Solo el responsable de área puede gestionar constancias.");
-        }
-    }
-
-    private SolicitudConstancia solicitudVigente(int idSolicitud) throws ReglaNegocioException, SQLException {
-        SolicitudConstancia s = solicitudes.buscarPorId(idSolicitud);
-        if (s == null) {
-            throw new ReglaNegocioException("La solicitud ya no existe.");
-        }
-        return s;
-    }
 
     private static String comentarioObligatorio(String comentario, String accion) throws ReglaNegocioException {
         String limpio = comentario == null ? "" : comentario.trim();
@@ -257,10 +233,5 @@ public class PanelDocenteService {
 
     private static String texto(BigDecimal horas) {
         return horas == null || horas.signum() == 0 ? "0" : horas.stripTrailingZeros().toPlainString();
-    }
-
-    /** Ruta de la carpeta de constancias, para mostrarla en mensajes. */
-    public static String carpetaConstanciasAbsoluta() {
-        return Paths.get(System.getProperty("user.dir"), CARPETA_CONSTANCIAS).toString();
     }
 }

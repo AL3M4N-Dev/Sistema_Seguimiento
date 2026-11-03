@@ -14,6 +14,7 @@ import vista.comun.Estilo;
 
 /**
  * Ventana principal del docente y del responsable de área (parte 5).
+ * Pestañas: Registros de horas · Alumnos y constancias · Instituciones por aprobar.
  *
  * Desde el inicio de sesión se abre así, cuando el usuario es docente o responsable:
  *     new PanelDocenteFrame().setVisible(true);      // usa Sesion.getUsuario()
@@ -33,25 +34,23 @@ public class PanelDocenteFrame extends JFrame {
         PanelDocenteService servicio = new PanelDocenteService(usuario);
 
         RegistrosPanel registros = new RegistrosPanel(servicio);
+        AlumnosPanel alumnos = new AlumnosPanel(servicio);
         InstitucionesPanel instituciones = new InstitucionesPanel(servicio);
-        ConstanciasPanel constancias = servicio.puedeGestionarConstancias() ? new ConstanciasPanel(servicio) : null;
 
         JTabbedPane pestanas = new JTabbedPane();
         pestanas.addTab("Registros de horas", registros);
+        pestanas.addTab("Alumnos y constancias", alumnos);
         pestanas.addTab("Instituciones por aprobar", instituciones);
-        if (constancias != null) {
-            pestanas.addTab("Constancias", constancias);
-        }
 
         // Cada vez que se cambia de pestaña, se vuelve a leer la base
         pestanas.addChangeListener(e -> {
             Object actual = pestanas.getSelectedComponent();
             if (actual == registros) {
                 registros.recargar();
+            } else if (actual == alumnos) {
+                alumnos.recargar();
             } else if (actual == instituciones) {
                 instituciones.recargar();
-            } else if (actual == constancias) {
-                constancias.recargar();
             }
         });
 
@@ -62,8 +61,8 @@ public class PanelDocenteFrame extends JFrame {
         registros.recargar();
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setMinimumSize(new Dimension(1000, 600));
-        setSize(1200, 740);
+        setMinimumSize(new Dimension(1100, 680));
+        setSize(1240, 780);
         setLocationRelativeTo(null);
     }
 

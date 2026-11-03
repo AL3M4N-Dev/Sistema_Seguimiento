@@ -5,15 +5,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
 import modelo.EstadoSolicitud;
 import modelo.SolicitudConstancia;
 import util.Conexion;
 
 /**
- * Solicitudes de constancia: validar las horas, marcar como disponible con su PDF,
- * o rechazar. Las horas aprobadas salen de la vista v_progreso_alumno.
+ * Tabla solicitudes_constancia (hay UNA por inscripción: id_inscripcion es único).
+ *  - Docente / responsable: aprobar con PDF o rechazar una solicitud.
+ *  - Alumno: pedirla o volver a pedirla si se la rechazaron.
  */
 public class SolicitudConstanciaDAO {
 
@@ -27,74 +26,48 @@ public class SolicitudConstanciaDAO {
             + "JOIN instituciones ins   ON ins.id_institucion = i.id_institucion "
             + "JOIN v_progreso_alumno p ON p.id_inscripcion = s.id_inscripcion ";
 
-    /** @param estado el filtro, o null para ver todas */
-    public List<SolicitudConstancia> listar(EstadoSolicitud estado) throws SQLException {
-        String sql = SELECT_BASE
-                + (estado == null ? "" : "WHERE s.estado = ? ")
-                + "ORDER BY s.fecha_solicitud ASC";
-        List<SolicitudConstancia> lista = new ArrayList<>();
+    /** La solicitud de una inscripción, o null si todavía no existe. */
+    public SolicitudConstancia buscarPorInscripcion(int idInscripcion) throws SQLException {
         try (Connection con = Conexion.getConexion();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            if (estado != null) {
-                ps.setString(1, estado.getValorBd());
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    lista.add(mapear(rs));
-                }
-            }
-        }
-        return lista;
-    }
-
-    public SolicitudConstancia buscarPorId(int idSolicitud) throws SQLException {
-        try (Connection con = Conexion.getConexion();
-             PreparedStatement ps = con.prepareStatement(SELECT_BASE + "WHERE s.id_solicitud = ?")) {
-            ps.setInt(1, idSolicitud);
+             PreparedStatement ps = con.prepareStatement(SELECT_BASE + "WHERE s.id_inscripcion = ?")) {
+            ps.setInt(1, idInscripcion);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? mapear(rs) : null;
             }
         }
     }
 
-    /** solicitada → validada: el responsable confirmó que las horas están completas. */
-    public boolean validar(int idSolicitud, int idResponsable) throws SQLException {
-        String sql = "UPDATE solicitudes_constancia "
-                + "SET estado = 'validada', id_responsable = ?, fecha_validacion = NOW(), comentario = NULL "
-                + "WHERE id_solicitud = ? AND estado = 'solicitada'";
-        try (Connection con = Conexion.getConexion();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, idResponsable);
-            ps.setInt(2, idSolicitud);
-            return ps.executeUpdate() == 1;
-        }
-    }
-
     /**
-     * validada → disponible: guarda la ruta del PDF y marca la inscripción como completada.
-     * Las dos cosas pasan juntas o ninguna.
+     * Docente o responsable: guarda la ruta del PDF y deja la constancia 'disponible'
+     * para que el alumno la descargue. Si el alumno no la había pedido, se crea la fila.
+     * También marca la inscripción como 'completada'. Todo pasa junto o nada.
      */
-    public boolean marcarDisponible(int idSolicitud, int idInscripcion, int idResponsable, String rutaPdf)
-            throws SQLException {
-        String sqlSolicitud = "UPDATE solicitudes_constancia "
-                + "SET estado = 'disponible', ruta_pdf = ?, id_responsable = ? "
-                + "WHERE id_solicitud = ? AND estado = 'validada'";
-        String sqlInscripcion = "UPDATE inscripciones SET estado = 'completada' WHERE id_inscripcion = ?";
+    public void aprobarConPdf(int idInscripcion, int idRevisor, String rutaPdf) throws SQLException {
+        String actualizar = "UPDATE solicitudes_constancia "
+                + "SET estado = 'disponible', ruta_pdf = ?, id_responsable = ?, "
+                + "    fecha_validacion = NOW(), comentario = NULL "
+                + "WHERE id_inscripcion = ?";
+        String crear = "INSERT INTO solicitudes_constancia "
+                + "(id_inscripcion, estado, id_responsable, fecha_validacion, ruta_pdf) "
+                + "VALUES (?, 'disponible', ?, NOW(), ?)";
+        String completar = "UPDATE inscripciones SET estado = 'completada' WHERE id_inscripcion = ?";
         try (Connection con = Conexion.getConexion()) {
             con.setAutoCommit(false);
-            try (PreparedStatement ps1 = con.prepareStatement(sqlSolicitud);
-                 PreparedStatement ps2 = con.prepareStatement(sqlInscripcion)) {
+            try (PreparedStatement ps1 = con.prepareStatement(actualizar);
+                 PreparedStatement ps2 = con.prepareStatement(crear);
+                 PreparedStatement ps3 = con.prepareStatement(completar)) {
                 ps1.setString(1, rutaPdf);
-                ps1.setInt(2, idResponsable);
-                ps1.setInt(3, idSolicitud);
-                if (ps1.executeUpdate() != 1) {
-                    con.rollback();
-                    return false;
+                ps1.setInt(2, idRevisor);
+                ps1.setInt(3, idInscripcion);
+                if (ps1.executeUpdate() == 0) {
+                    ps2.setInt(1, idInscripcion);
+                    ps2.setInt(2, idRevisor);
+                    ps2.setString(3, rutaPdf);
+                    ps2.executeUpdate();
                 }
-                ps2.setInt(1, idInscripcion);
-                ps2.executeUpdate();
+                ps3.setInt(1, idInscripcion);
+                ps3.executeUpdate();
                 con.commit();
-                return true;
             } catch (SQLException e) {
                 con.rollback();
                 throw e;
@@ -102,16 +75,42 @@ public class SolicitudConstanciaDAO {
         }
     }
 
-    /** solicitada o validada → rechazada, con el motivo para el alumno. */
-    public boolean rechazar(int idSolicitud, int idResponsable, String comentario) throws SQLException {
+    /** Docente o responsable: solicitada o validada → rechazada, con el motivo para el alumno. */
+    public boolean rechazar(int idSolicitud, int idRevisor, String comentario) throws SQLException {
         String sql = "UPDATE solicitudes_constancia "
                 + "SET estado = 'rechazada', id_responsable = ?, comentario = ? "
                 + "WHERE id_solicitud = ? AND estado IN ('solicitada', 'validada')";
         try (Connection con = Conexion.getConexion();
              PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, idResponsable);
+            ps.setInt(1, idRevisor);
             ps.setString(2, comentario);
             ps.setInt(3, idSolicitud);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
+    /** Alumno: pide su constancia por primera vez (estado 'solicitada'). */
+    public void crear(int idInscripcion) throws SQLException {
+        String sql = "INSERT INTO solicitudes_constancia (id_inscripcion) VALUES (?)";
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idInscripcion);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Alumno: rechazada → solicitada. Se reutiliza la misma fila porque solo puede
+     * haber una solicitud por inscripción.
+     */
+    public boolean volverASolicitar(int idSolicitud) throws SQLException {
+        String sql = "UPDATE solicitudes_constancia "
+                + "SET estado = 'solicitada', fecha_solicitud = NOW(), id_responsable = NULL, "
+                + "    fecha_validacion = NULL, comentario = NULL "
+                + "WHERE id_solicitud = ? AND estado = 'rechazada'";
+        try (Connection con = Conexion.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idSolicitud);
             return ps.executeUpdate() == 1;
         }
     }

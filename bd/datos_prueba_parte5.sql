@@ -20,7 +20,9 @@ INSERT INTO usuarios (nombre, matricula, carrera, correo, password_hash, rol, ti
  ('Luis Herrera',   'P5-004', 'Enfermería',       'luis.p5@escuela.edu',   'SIN_ACCESO_PRUEBA', 'alumno', 'servicio_social'),
  ('Jorge Castillo', 'P5-005', 'Psicología',       'jorge.p5@escuela.edu',  'SIN_ACCESO_PRUEBA', 'alumno', 'servicio_social'),
  ('Sofía Ramírez',  'P5-006', 'Diseño Gráfico',   'sofia.p5@escuela.edu',  'SIN_ACCESO_PRUEBA', 'alumno', 'practicas'),
- ('Pedro Salas',    'P5-007', 'Ing. Electrónica', 'pedro.p5@escuela.edu',  'SIN_ACCESO_PRUEBA', 'alumno', 'practicas');
+ ('Pedro Salas',    'P5-007', 'Ing. Electrónica', 'pedro.p5@escuela.edu',  'SIN_ACCESO_PRUEBA', 'alumno', 'practicas'),
+ ('Valeria Núñez',  'P5-008', 'Trabajo Social',   'valeria.p5@escuela.edu','SIN_ACCESO_PRUEBA', 'alumno', 'servicio_social'),
+ ('Daniela Ortiz',  'P5-009', 'Contaduría',       'daniela.p5@escuela.edu','SIN_ACCESO_PRUEBA', 'alumno', 'practicas');
 
 -- Instituciones de prácticas que dieron de alta los alumnos
 INSERT INTO instituciones (nombre, direccion, contacto, tipo, horas_requeridas, estado, creada_por, aprobada_por)
@@ -51,6 +53,8 @@ JOIN instituciones ins ON ins.nombre = CASE a.correo
         WHEN 'jorge.p5@escuela.edu'  THEN 'Centro de Salud Comunitario'
         WHEN 'sofia.p5@escuela.edu'  THEN 'Agencia Digital Pixel (prueba)'
         WHEN 'pedro.p5@escuela.edu'  THEN 'Taller Electrónico Norte (prueba)'
+        WHEN 'valeria.p5@escuela.edu' THEN 'Centro de Salud Comunitario'
+        WHEN 'daniela.p5@escuela.edu' THEN 'Despacho Contable Méndez (prueba)'
      END
 LEFT JOIN usuarios d ON d.correo = 'docente@escuela.edu'
 WHERE a.correo LIKE '%.p5@escuela.edu';
@@ -92,7 +96,9 @@ JOIN (
              'Apoyo.', 'rechazado', 'Describe qué actividades hiciste en el turno.', '2026-10-20 18:10:00', '2026-10-21 09:30:00'
      ) v ON v.correo = a.correo;
 
--- Luis: 120 turnos de 4 h aprobados = 480 h (horas completas)
+-- Luis: 120 turnos de 4 h aprobados = 480 h (horas completas, ya pidió constancia)
+-- Valeria: 120 turnos de 4 h aprobados = 480 h (horas completas, todavía NO la pide)
+-- Daniela (PRÁCTICAS): 120 turnos de 4 h aprobados = 480 h (horas completas, no la pide)
 -- Jorge: 119 turnos de 4 h aprobados = 476 h (le faltan 4 h)
 INSERT INTO registros_horas (id_inscripcion, fecha, hora_inicio, hora_fin, horas_calculadas, reporte, estado,
                              id_docente_revisor, fecha_envio, fecha_revision)
@@ -109,6 +115,8 @@ CROSS JOIN (SELECT x.d + y.d * 10 + z.d * 100 AS n
                   UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) y
             CROSS JOIN (SELECT 0 d UNION ALL SELECT 1) z) n
 WHERE (a.correo = 'luis.p5@escuela.edu' AND n.n < 120)
+   OR (a.correo = 'valeria.p5@escuela.edu' AND n.n < 120)
+   OR (a.correo = 'daniela.p5@escuela.edu' AND n.n < 120)
    OR (a.correo = 'jorge.p5@escuela.edu' AND n.n < 119);
 
 -- Solicitudes de constancia de Luis y Jorge

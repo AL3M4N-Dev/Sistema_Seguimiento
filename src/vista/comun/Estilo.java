@@ -41,10 +41,10 @@ public final class Estilo {
         if (e.equals("pendiente") || e.equals("solicitada")) {
             return new Color[]{PENDIENTE_FONDO, PENDIENTE_TEXTO};
         }
-        if (e.equals("validada")) {
+        if (e.equals("validada") || e.equals("lista para subir")) {
             return new Color[]{VALIDADA_FONDO, VALIDADA_TEXTO};
         }
-        if (e.equals("aprobado") || e.equals("disponible") || e.equals("sí")) {
+        if (e.equals("aprobado") || e.equals("disponible") || e.equals("entregada") || e.equals("sí")) {
             return new Color[]{APROBADO_FONDO, APROBADO_TEXTO};
         }
         if (e.equals("rechazado") || e.equals("rechazada") || e.startsWith("no,")) {
