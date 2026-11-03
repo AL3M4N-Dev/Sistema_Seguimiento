@@ -34,6 +34,7 @@ import modelo.RegistroHoras;
 import servicio.PanelDocenteService;
 import servicio.ReglaNegocioException;
 import vista.comun.Avatar;
+import vista.comun.BarraDesplazamiento;
 import vista.comun.BarraProgreso;
 import vista.comun.Boton;
 import vista.comun.CampoBusqueda;
@@ -80,6 +81,7 @@ public class AlumnosPanel extends JPanel {
         scrollDetalle.setOpaque(false);
         scrollDetalle.getViewport().setOpaque(false);
         scrollDetalle.getVerticalScrollBar().setUnitIncrement(16);
+        BarraDesplazamiento.aplicar(scrollDetalle);
         add(scrollDetalle, BorderLayout.CENTER);
 
         buscar.alCambiar(texto -> filtrar());
@@ -416,16 +418,19 @@ public class AlumnosPanel extends JPanel {
             }
         }
         String programa = "practicas".equals(a.getTipoPrograma()) ? "prácticas" : "servicio social";
-        String pregunta = a.tieneConstancia()
-                ? a.getNombre() + " ya tiene su constancia.\n¿Reemplazarla por \"" + archivoElegido.getName() + "\"?"
-                : "¿Subir \"" + archivoElegido.getName() + "\" como constancia de " + programa + " de "
-                  + a.getNombre() + " y aprobarla?";
-        if (!Dialogos.confirmar(this, pregunta)) {
+        String archivo = archivoElegido.getName() + "  ·  " + Formato.tamanoArchivo(archivoElegido.length());
+        boolean acepto = a.tieneConstancia()
+                ? Dialogos.confirmarAprobar(this, "¿Reemplazar la constancia?",
+                        a.getNombre() + " ya tiene su constancia. Se cambiará por este archivo:", archivo, "Reemplazar PDF")
+                : Dialogos.confirmarAprobar(this, "¿Subir y aprobar la constancia?",
+                        "Será la constancia de " + programa + " de " + a.getNombre()
+                        + " y podrá descargarla desde su menú.", archivo, "Subir y aprobar");
+        if (!acepto) {
             return;
         }
         try {
             servicio.subirPdfYAprobar(a.getIdInscripcion(), archivoElegido);
-            Dialogos.info(this, "Constancia aprobada. " + a.getNombre() + " ya puede descargarla.");
+            Dialogos.exito(this, "Constancia aprobada", a.getNombre() + " ya puede descargarla desde su menú.");
         } catch (ReglaNegocioException | SQLException | IOException e) {
             Dialogos.mostrarError(this, e);
         }
@@ -435,15 +440,17 @@ public class AlumnosPanel extends JPanel {
     private void abrirPdf(AlumnoActivo a) {
         File pdf = PanelDocenteService.archivoDe(a.getRutaPdf());
         if (pdf == null || !pdf.isFile()) {
-            Dialogos.info(this, "No se encontró el PDF en esta computadora:\n"
-                    + (pdf == null ? "(sin ruta)" : pdf.getAbsolutePath()));
+            Dialogos.aviso(this, "No se encontró el PDF",
+                    "El archivo de la constancia no está en esta computadora. Puedes volver a subirlo con Reemplazar PDF.",
+                    pdf == null ? "(sin ruta guardada)" : pdf.getAbsolutePath());
             return;
         }
         try {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
                 Desktop.getDesktop().open(pdf);
             } else {
-                Dialogos.info(this, "El PDF está en:\n" + pdf.getAbsolutePath());
+                Dialogos.info(this, "Ubicación del PDF", "Esta computadora no permite abrirlo desde aquí. Está en:",
+                        pdf.getAbsolutePath());
             }
         } catch (IOException e) {
             Dialogos.mostrarError(this, e);
@@ -454,14 +461,15 @@ public class AlumnosPanel extends JPanel {
         if (a.getIdSolicitud() == null) {
             return;
         }
-        String comentario = Dialogos.pedirComentario(this, "Rechazar solicitud de constancia",
-                "¿Por qué se rechaza la solicitud de " + a.getNombre() + "? El alumno leerá este comentario.");
+        String comentario = Dialogos.pedirMotivoRechazo(this, "Rechazar solicitud de constancia",
+                "¿Por qué se rechaza la solicitud de " + a.getNombre() + "? El alumno leerá este comentario.",
+                "Rechazar solicitud", "Ej. Faltan horas por validar en la institución");
         if (comentario == null) {
             return;
         }
         try {
             servicio.rechazarSolicitud(a.getIdSolicitud(), comentario);
-            Dialogos.info(this, "Solicitud rechazada.");
+            Dialogos.exito(this, "Solicitud rechazada", a.getNombre() + " verá tu comentario en su sección de constancia.");
         } catch (ReglaNegocioException | SQLException e) {
             Dialogos.mostrarError(this, e);
         }

@@ -132,7 +132,7 @@ public class RegistrosPanel extends JPanel {
     private void abrirDetalle() {
         int fila = tabla.getSelectedRow();
         if (fila < 0) {
-            Dialogos.info(this, "Selecciona un registro de la tabla.");
+            Dialogos.info(this, "Ningún registro seleccionado", "Haz clic en un registro de la tabla para revisarlo.");
             return;
         }
         RegistroHoras r = modelo.getFila(tabla.convertRowIndexToModel(fila));

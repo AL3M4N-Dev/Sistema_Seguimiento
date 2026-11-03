@@ -3,6 +3,7 @@
 Usa la estructura del proyecto del equipo: `util.Conexion`, `modelo.Usuario`, `util.Sesion` y las tablas de `servicio_social.sql`. No agrega librerías y no modifica archivos de los demás integrantes.
 
 **Diseño:** usa el diseño base del proyecto (opción E, lista y detalle). Cómo usarlo en otras pantallas: ver **`GUIA_DISENO.md`**.
+Todas las ventanas que se abren (avisos, preguntas, detalle del registro, fotos) tienen ese mismo diseño: no se usa `JOptionPane`.
 
 ## Qué hace
 
@@ -30,7 +31,8 @@ src/servicio/   PanelDocenteService, ConstanciaAlumnoService (todas las reglas),
                 ReglaNegocioException
 src/vista/comun/    DISEÑO BASE para todo el equipo: Estilo, Boton, Tarjeta, Chip, ChipFiltro,
                     Avatar, BarraProgreso, CampoBusqueda, ZonaArchivo, EncabezadoApp,
-                    EstadoRenderer, ListaTableModel, Dialogos, Formato (y Avance/AvanceRenderer)
+                    EstadoRenderer, ListaTableModel, Formato (y Avance/AvanceRenderer)
+                    Ventanas: VentanaDialogo, Dialogos, AreaTexto, TextoAjustado, BarraDesplazamiento
 src/vista/docente/  PanelDocenteFrame, RegistrosPanel, DetalleRegistroDialog, AlumnosPanel,
                     RegistrosAlumnoDialog, InstitucionesPanel, PruebaPanelDocente (solo para probar)
 src/vista/alumno/   ConstanciaAlumnoPanel, PruebaConstanciaAlumno (solo para probar)
@@ -50,7 +52,8 @@ bd/             datos_prueba_parte5.sql, borrar_datos_prueba_parte5.sql
 | Seleccionar a Ana López (8 de 480 h) | La zona del PDF y **Subir PDF y aprobar** están bloqueadas: "Le faltan 472 h aprobadas" |
 | Daniela Ortiz (**prácticas**, 480 h) → arrastrar un PDF a la zona → **Subir PDF y aprobar** | Pasa a "Entregada" y aparecen **Abrir PDF** y **Reemplazar PDF** |
 | Valeria Núñez (servicio social, 480 h) → **Subir PDF y aprobar** sin arrastrar nada | Se abre el selector de archivos para elegir el PDF |
-| Luis Herrera (pidió su constancia) → **Rechazar solicitud** sin comentario | Aviso: "Escribe un comentario para rechazar la solicitud." |
+| Luis Herrera (pidió su constancia) → **Rechazar solicitud** sin comentario | La ventana no se cierra: el campo se pone en rojo ("Escribe el motivo; el alumno lo leerá.") |
+| En cualquier aviso: **Esc**, la **X** o **Enter** | Esc y la X cierran; Enter presiona el botón principal (en un rechazo, Enter = Cancelar) |
 | Arrastrar un archivo que no es PDF | La zona avisa: "Ese archivo no se puede usar · Solo se aceptan archivos pdf" y no lo acepta |
 | **Ver todos sus registros** | Ventana con todos los turnos del alumno y su estado |
 | Filtro **Prácticas** o escribir en **Buscar** | La lista se filtra al momento |

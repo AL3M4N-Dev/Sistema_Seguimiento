@@ -160,12 +160,13 @@ public class ConstanciaAlumnoPanel extends Tarjeta {
     }
 
     private void solicitar() {
-        if (!Dialogos.confirmar(this, "¿Enviar la solicitud de tu constancia al responsable de área?")) {
+        if (!Dialogos.confirmar(this, "¿Solicitar tu constancia?",
+                "Tu solicitud se enviará al responsable de área para que la valide.", "Enviar solicitud")) {
             return;
         }
         try {
             servicio.solicitar();
-            Dialogos.info(this, "Solicitud enviada. Te avisaremos aquí cuando tu constancia esté lista.");
+            Dialogos.exito(this, "Solicitud enviada", "Te avisaremos aquí cuando tu constancia esté lista.");
         } catch (ReglaNegocioException | SQLException e) {
             Dialogos.mostrarError(this, e);
         }
@@ -181,7 +182,8 @@ public class ConstanciaAlumnoPanel extends Tarjeta {
         }
         try {
             servicio.descargar(selector.getSelectedFile());
-            Dialogos.info(this, "Constancia guardada en:\n" + selector.getSelectedFile().getAbsolutePath());
+            Dialogos.exito(this, "Constancia guardada", "Tu constancia se guardó en:",
+                    selector.getSelectedFile().getAbsolutePath());
         } catch (ReglaNegocioException | SQLException | IOException e) {
             Dialogos.mostrarError(this, e);
         }

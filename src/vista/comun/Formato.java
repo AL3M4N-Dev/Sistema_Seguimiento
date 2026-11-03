@@ -50,4 +50,11 @@ public final class Formato {
                 .intValue();
         return Math.min(100, Math.max(0, p));
     }
+
+    /** Tamaño de un archivo para mostrarlo: "245 KB" o "1.3 MB". */
+    public static String tamanoArchivo(long bytes) {
+        return bytes < 1024 * 1024
+                ? Math.max(1, bytes / 1024) + " KB"
+                : String.format(java.util.Locale.ROOT, "%.1f MB", bytes / 1048576.0);
+    }
 }

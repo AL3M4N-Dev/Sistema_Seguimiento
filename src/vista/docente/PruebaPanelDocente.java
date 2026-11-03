@@ -1,20 +1,16 @@
 package vista.docente;
 
-import java.awt.BorderLayout;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import modelo.Usuario;
 import util.Conexion;
 import util.Sesion;
+import vista.comun.Dialogos;
 import vista.comun.Estilo;
 
 /**
@@ -34,30 +30,22 @@ public class PruebaPanelDocente {
         try {
             personal = docentesYResponsables();
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "No se pudo conectar a la base servicio_social.\n"
-                    + "Revisa que MySQL esté encendido en XAMPP.\n\nDetalle: " + e.getMessage(),
-                    "Error de conexión", JOptionPane.ERROR_MESSAGE);
+            Dialogos.error(null, "No se pudo conectar a la base de datos",
+                    "Revisa que MySQL esté encendido en XAMPP y que exista la base servicio_social.", e.getMessage());
             return;
         }
         if (personal.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "No hay docentes ni responsables en la tabla usuarios.",
-                    "Sin usuarios", JOptionPane.WARNING_MESSAGE);
+            Dialogos.aviso(null, "No hay docentes",
+                    "No hay docentes ni responsables en la tabla usuarios. Importa bd/datos_prueba_parte5.sql.");
             return;
         }
-        String[] nombres = new String[personal.size()];
-        for (int i = 0; i < nombres.length; i++) {
-            Usuario u = personal.get(i);
-            nombres[i] = u.getNombre() + " (" + u.getRol() + ")";
-        }
-        JComboBox<String> combo = new JComboBox<>(nombres);
-        JPanel panel = new JPanel(new BorderLayout(0, 8));
-        panel.add(new JLabel("Prueba: ¿con qué usuario quieres entrar?"), BorderLayout.NORTH);
-        panel.add(combo, BorderLayout.CENTER);
-        int r = JOptionPane.showConfirmDialog(null, panel, "Probar panel del docente",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r == JOptionPane.OK_OPTION) {
-            Sesion.iniciar(personal.get(combo.getSelectedIndex()));
+        Usuario elegido = Dialogos.elegir(null, "Probar panel del docente",
+                "Solo para pruebas: elige con qué usuario quieres entrar.", personal,
+                Usuario::getNombre,
+                u -> ("responsable".equals(u.getRol()) ? "Responsable de área" : "Docente") + "  ·  " + u.getCorreo(),
+                "Entrar");
+        if (elegido != null) {
+            Sesion.iniciar(elegido);
             new PanelDocenteFrame().setVisible(true);
         }
     }

@@ -100,6 +100,12 @@ public final class Estilo {
         UIManager.put("List.selectionBackground", PRIMARIO_SUAVE);
         UIManager.put("List.selectionForeground", TEXTO);
         UIManager.put("ScrollBar.width", 12);
+        // Globos de ayuda (tooltips) con los colores del proyecto
+        UIManager.put("ToolTip.background", TEXTO);
+        UIManager.put("ToolTip.foreground", Color.WHITE);
+        UIManager.put("ToolTip.font", new FontUIResource(fuente(Font.PLAIN, 12)));
+        UIManager.put("ToolTip.border", new javax.swing.plaf.BorderUIResource(
+                BorderFactory.createEmptyBorder(6, 10, 6, 10)));
     }
 
     /** Letra del proyecto: Segoe UI en Windows; si no existe, una parecida. */
@@ -209,12 +215,13 @@ public final class Estilo {
         return p;
     }
 
-    /** JScrollPane sin borde y con fondo blanco, para tablas y listas dentro de una Tarjeta. */
+    /** JScrollPane sin borde, fondo blanco y barra delgada, para tablas y listas dentro de una Tarjeta. */
     public static JScrollPane scroll(Component contenido) {
         JScrollPane s = new JScrollPane(contenido);
         s.setBorder(BorderFactory.createEmptyBorder());
         s.getViewport().setBackground(SUPERFICIE);
         s.getVerticalScrollBar().setUnitIncrement(16);
+        BarraDesplazamiento.aplicar(s);
         return s;
     }
 

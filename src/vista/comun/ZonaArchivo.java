@@ -87,7 +87,7 @@ public class ZonaArchivo extends JComponent {
         if (archivo == null) {
             setTextos(tituloVacio, detalleVacio);
         } else {
-            setTextos(archivo.getName(), tamano(archivo.length()) + " · listo para subir · clic para cambiarlo");
+            setTextos(archivo.getName(), Formato.tamanoArchivo(archivo.length()) + " · listo para subir · clic para cambiarlo");
         }
     }
 
@@ -217,10 +217,6 @@ public class ZonaArchivo extends JComponent {
         }
         g2.setColor(color);
         g2.drawString(t, (anchoTotal - fm.stringWidth(t)) / 2, base);
-    }
-
-    private static String tamano(long bytes) {
-        return bytes < 1024 * 1024 ? Math.max(1, bytes / 1024) + " KB" : String.format("%.1f MB", bytes / 1048576.0);
     }
 
     /** Recibe archivos arrastrados desde el explorador de Windows. */

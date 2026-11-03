@@ -94,7 +94,7 @@ public class InstitucionesPanel extends JPanel {
     private Institucion seleccionada() {
         int fila = tabla.getSelectedRow();
         if (fila < 0) {
-            Dialogos.info(this, "Selecciona una institución de la tabla.");
+            Dialogos.info(this, "Ninguna institución seleccionada", "Haz clic en una institución de la tabla.");
             return null;
         }
         return modelo.getFila(tabla.convertRowIndexToModel(fila));
@@ -106,13 +106,13 @@ public class InstitucionesPanel extends JPanel {
 
     private void aprobar() {
         Institucion i = seleccionada();
-        if (i == null || !Dialogos.confirmar(this, "¿Aprobar \"" + i.getNombre() + "\"?\n"
-                + alumno(i) + " podrá empezar a registrar sus horas.")) {
+        if (i == null || !Dialogos.confirmarAprobar(this, "¿Aprobar esta institución?",
+                alumno(i) + " podrá empezar a registrar sus horas en ella.", i.getNombre(), "Aprobar")) {
             return;
         }
         try {
             servicio.aprobarInstitucion(i.getIdInstitucion());
-            Dialogos.info(this, "Institución aprobada.");
+            Dialogos.exito(this, "Institución aprobada", "\"" + i.getNombre() + "\" ya está disponible para " + alumno(i) + ".");
         } catch (ReglaNegocioException | SQLException e) {
             Dialogos.mostrarError(this, e);
         }
@@ -121,13 +121,14 @@ public class InstitucionesPanel extends JPanel {
 
     private void rechazar() {
         Institucion i = seleccionada();
-        if (i == null || !Dialogos.confirmar(this, "¿Rechazar \"" + i.getNombre() + "\"?\n"
-                + alumno(i) + " tendrá que registrar otra institución.")) {
+        if (i == null || !Dialogos.confirmarRechazo(this, "¿Rechazar esta institución?",
+                "\"" + i.getNombre() + "\" quedará rechazada y " + alumno(i) + " tendrá que registrar otra.",
+                "Rechazar")) {
             return;
         }
         try {
             servicio.rechazarInstitucion(i.getIdInstitucion());
-            Dialogos.info(this, "Institución rechazada.");
+            Dialogos.exito(this, "Institución rechazada", alumno(i) + " tendrá que registrar otra institución.");
         } catch (ReglaNegocioException | SQLException e) {
             Dialogos.mostrarError(this, e);
         }
