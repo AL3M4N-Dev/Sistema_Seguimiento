@@ -19,17 +19,19 @@ public class UsuarioDAO {
     /** Registra un alumno. La contraseña se guarda hasheada con BCrypt. */
     public boolean registrar(Usuario u, String passwordPlano) throws SQLException {
         String sql = "INSERT INTO usuarios (nombre, matricula, carrera, correo, password_hash, rol, tipo_programa) "
-                   + "VALUES (?, ?, ?, ?, ?, 'alumno', ?)";
-        try (Connection con = Conexion.getConexion();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, u.getNombre());
-            ps.setString(2, vacioANull(u.getMatricula()));
-            ps.setString(3, u.getCarrera());
-            ps.setString(4, u.getCorreo().trim().toLowerCase());
-            ps.setString(5, BCrypt.hashpw(passwordPlano, BCrypt.gensalt(12)));
-            ps.setString(6, u.getTipoPrograma());
-            return ps.executeUpdate() == 1;
-        }
+           + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+    try (Connection con = Conexion.getConexion();
+        PreparedStatement ps = con.prepareStatement(sql)) {
+        ps.setString(1, u.getNombre());
+        ps.setString(2, vacioANull(u.getMatricula()));
+        ps.setString(3, u.getCarrera());
+        ps.setString(4, u.getCorreo().trim().toLowerCase());
+        ps.setString(5, BCrypt.hashpw(passwordPlano, BCrypt.gensalt(12)));
+        ps.setString(6, u.getRol());
+        ps.setString(7, u.getTipoPrograma());
+        return ps.executeUpdate() == 1;
+    }
+    
     }
     /** Devuelve el usuario si correo y contraseña son correctos; si no, null. */
     public Usuario autenticar(String correo, String passwordPlano) throws SQLException {
