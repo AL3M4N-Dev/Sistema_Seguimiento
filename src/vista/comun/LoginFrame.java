@@ -11,6 +11,7 @@ import javax.swing.*;
 import modelo.Usuario;
 import util.Sesion;
 import vista.docente.PanelDocenteFrame;
+import vista.alumno.InstruccionesFrame;
 /**
  *
  * @author luisa
@@ -114,8 +115,8 @@ public class LoginFrame extends JFrame {
  
         // Alumno
         if (!dao.tieneInscripcion(u.getIdUsuario())) {
-            // TODO (integrante 2): abrir la pantalla de instrucciones/inscripción
-            aviso("Pantalla de instrucciones: pendiente (integrante 2)Adán)).");
+            new InstruccionesFrame().setVisible(true);
+            return true;
         } else {
             // TODO (integrante 3): abrir el menú principal del alumno
             aviso("Menú principal del alumno: pendiente (integrante 3).");
