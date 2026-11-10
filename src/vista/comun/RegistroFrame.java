@@ -60,10 +60,10 @@ public class RegistroFrame extends JFrame {
         lblCodigo = fila(p, f++, "Código de docente", txtCodigo);
 
         JButton btnRegistrar = new JButton("Registrarme");
-        JButton btnVolver = new JButton("Volver al inicio de sesión");
+        JButton btnVolver = new JButton("Atras");
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        botones.add(btnRegistrar);
         botones.add(btnVolver);
+        botones.add(btnRegistrar);
         GridBagConstraints gb = new GridBagConstraints();
         gb.gridx = 0; gb.gridy = f; gb.gridwidth = 2;
         gb.insets = new Insets(16, 0, 0, 0);

@@ -57,9 +57,10 @@ public class LoginFrame extends JFrame {
             new RegistroFrame().setVisible(true);
             dispose();
         });
-        btnOlvide.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "La recuperación de contraseña estará disponible próximamente.",
-                "Recuperar contraseña", JOptionPane.INFORMATION_MESSAGE));
+        btnOlvide.addActionListener(e -> {
+            new RecuperarPasswordFrame().setVisible(true);
+            dispose();
+        });
  
         getRootPane().setDefaultButton(btnEntrar);   // Enter = iniciar sesión
         setContentPane(p);
