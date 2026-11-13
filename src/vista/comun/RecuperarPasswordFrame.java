@@ -8,60 +8,78 @@ import util.CorreoUtil;
 
 public class RecuperarPasswordFrame extends JFrame {
 
-    private final JTextField txtCorreo = new JTextField(22);
-    private final JButton btnEnviar = new JButton("Enviar código");
-    private final JTextField txtCodigo = new JTextField(22);
-    private final JPasswordField txtNueva = new JPasswordField(22);
-    private final JPasswordField txtConfirmar = new JPasswordField(22);
-    private final JButton btnCambiar = new JButton("Cambiar contraseña");
-    private final JButton btnVolver = new JButton("Volver al inicio de sesión");
+    private final JTextField txtCorreo = new JTextField();
+    private final JButton btnEnviar = Tema.anchoCompleto(Estilo.botonPrincipal("Enviar código"));
+    private final JTextField txtCodigo = new JTextField();
+    private final JPasswordField txtNueva = new JPasswordField();
+    private final JPasswordField txtConfirmar = new JPasswordField();
+    private final JButton btnCambiar = Tema.anchoCompleto(Estilo.botonPrincipal("Cambiar contraseña"));
+    private final JButton btnVolver = Tema.anchoCompleto(Estilo.botonSecundario("Volver al inicio de sesión"));
     private final RecuperacionDAO dao = new RecuperacionDAO();
 
     public RecuperarPasswordFrame() {
-        setTitle("Seguimiento de Servicio Social y Prácticas - Recuperar contraseña");
+        setTitle("Recuperar contraseña · Seguimiento de Servicio Social y Prácticas");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        JPanel p = new JPanel(new GridBagLayout());
-        p.setBorder(BorderFactory.createEmptyBorder(20, 32, 20, 32));
-        GridBagConstraints g = new GridBagConstraints();
-        g.insets = new Insets(5, 4, 5, 4);
-        g.fill = GridBagConstraints.HORIZONTAL;
-        g.gridx = 0;
+        // ---------- Estilo de los componentes ----------
+        Tema.campo(txtCorreo);
+        Tema.campo(txtCodigo);
+        Tema.campo(txtNueva);
+        Tema.campo(txtConfirmar);
 
-        JLabel titulo = new JLabel("Recuperar contraseña", SwingConstants.CENTER);
-        titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 20f));
-        g.gridy = 0; p.add(titulo, g);
+        // ---------- Tarjeta central ----------
+        Tema.Tarjeta card = new Tema.Tarjeta(560);
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBorder(BorderFactory.createEmptyBorder(26, 36, 26, 36));
 
-        g.gridy = 1; p.add(new JLabel("1. Escribe tu correo y te enviaremos un código"), g);
-        g.gridy = 2; p.add(txtCorreo, g);
-        g.gridy = 3; p.add(btnEnviar, g);
+        card.add(Tema.titulo("Recuperar contraseña"));
+        card.add(Box.createVerticalStrut(4));
+        card.add(Tema.subtitulo("Te enviaremos un código a tu correo para crear una contraseña nueva"));
+        card.add(Box.createVerticalStrut(18));
 
-        g.gridy = 4; g.insets = new Insets(18, 4, 5, 4);
-        p.add(new JLabel("2. Escribe el código y tu nueva contraseña"), g);
-        g.insets = new Insets(5, 4, 5, 4);
-        g.gridy = 5; p.add(etiquetado("Código recibido", txtCodigo), g);
-        g.gridy = 6; p.add(etiquetado("Nueva contraseña (mín. 8)", txtNueva), g);
-        g.gridy = 7; p.add(etiquetado("Confirmar contraseña", txtConfirmar), g);
-        g.gridy = 8; p.add(btnCambiar, g);
-        g.gridy = 9; p.add(btnVolver, g);
+        card.add(Tema.seccion("1. Solicita tu código"));
+        card.add(Box.createVerticalStrut(10));
+        card.add(Tema.conEspacio(Tema.campoEtiquetado("Correo", txtCorreo), 10));
+        card.add(btnEnviar);
+        card.add(Box.createVerticalStrut(16));
+        card.add(Tema.separador());
+        card.add(Box.createVerticalStrut(16));
+
+        card.add(Tema.seccion("2. Crea tu nueva contraseña"));
+        card.add(Box.createVerticalStrut(10));
+        card.add(Tema.conEspacio(Tema.campoEtiquetado("Código recibido", txtCodigo), 10));
+        card.add(Tema.conEspacio(Tema.dos(
+                Tema.campoEtiquetado("Nueva contraseña (mín. 8)", txtNueva),
+                Tema.campoEtiquetado("Confirmar contraseña", txtConfirmar)), 6));
+        card.add(VerPassword.crear(txtNueva, txtConfirmar));
+        card.add(Box.createVerticalStrut(12));
+        card.add(btnCambiar);
+        card.add(Box.createVerticalStrut(8));
+        card.add(btnVolver);
+
+        // ---------- Página: barra superior + tarjeta centrada ----------
+        JPanel centro = new JPanel(new GridBagLayout());
+        centro.setBackground(Estilo.FONDO);
+        centro.add(card);
+
+        JPanel raiz = new JPanel(new BorderLayout());
+        raiz.setBackground(Estilo.FONDO);
+        raiz.add(Tema.barraSuperior(), BorderLayout.NORTH);
+        raiz.add(centro, BorderLayout.CENTER);
+        setContentPane(raiz);
 
         // El paso 2 se habilita después de enviar el código
         setPaso2(false);
 
+        // ---------- Eventos ----------
         btnEnviar.addActionListener(e -> enviarCodigo());
         btnCambiar.addActionListener(e -> cambiarPassword());
         btnVolver.addActionListener(e -> volverAlLogin());
 
-        setContentPane(p);
-        pack();
+        setSize(1000, 700);
+        setMinimumSize(new Dimension(640, 680));
         setLocationRelativeTo(null);
-    }
-
-    private JPanel etiquetado(String texto, JComponent campo) {
-        JPanel panel = new JPanel(new BorderLayout(0, 3));
-        panel.add(new JLabel(texto), BorderLayout.NORTH);
-        panel.add(campo, BorderLayout.CENTER);
-        return panel;
+        Estilo.pantallaCompleta(this);
     }
 
     private void setPaso2(boolean activo) {

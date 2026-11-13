@@ -20,93 +20,106 @@ public class RegistroFrame extends JFrame {
 
     private final JComboBox<String> cmbRol =
             new JComboBox<>(new String[]{"Alumno", "Docente"});
-    private final JTextField txtNombre = new JTextField(22);
-    private final JTextField txtMatricula = new JTextField(22);
-    private final JTextField txtCarrera = new JTextField(22);
+    private final JTextField txtNombre = new JTextField();
+    private final JTextField txtMatricula = new JTextField();
+    private final JTextField txtCarrera = new JTextField();
     private final JComboBox<String> cmbPrograma =
             new JComboBox<>(new String[]{"Servicio social", "Prácticas profesionales"});
-    private final JTextField txtCorreo = new JTextField(22);
-    private final JPasswordField txtPassword = new JPasswordField(22);
-    private final JPasswordField txtConfirmar = new JPasswordField(22);
-    private final JPasswordField txtCodigo = new JPasswordField(22);
+    private final JTextField txtCorreo = new JTextField();
+    private final JPasswordField txtPassword = new JPasswordField();
+    private final JPasswordField txtConfirmar = new JPasswordField();
+    private final JPasswordField txtCodigo = new JPasswordField();
 
-    private JLabel lblMatricula, lblCarrera, lblPrograma, lblCodigo;
+    private JComponent filaAlumno;   // matrícula + carrera (solo alumnos)
+    private JPanel espacioRol;       // programa (alumno) o código (docente)
     private final UsuarioDAO dao = new UsuarioDAO();
 
     public RegistroFrame() {
-        setTitle("Seguimiento de Servicio Social y Prácticas - Registro");
+        setTitle("Crear cuenta · Seguimiento de Servicio Social y Prácticas");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        JPanel p = new JPanel(new GridBagLayout());
-        p.setBorder(BorderFactory.createEmptyBorder(20, 32, 20, 32));
+        // ---------- Estilo de los componentes ----------
+        Tema.combo(cmbRol);
+        Tema.combo(cmbPrograma);
+        Tema.campo(txtNombre);
+        Tema.campo(txtMatricula);
+        Tema.campo(txtCarrera);
+        Tema.campo(txtCorreo);
+        Tema.campo(txtPassword);
+        Tema.campo(txtConfirmar);
+        Tema.campo(txtCodigo);
 
-        JLabel titulo = new JLabel("Crear cuenta", SwingConstants.CENTER);
-        titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 20f));
-        GridBagConstraints gt = new GridBagConstraints();
-        gt.gridx = 0; gt.gridy = 0; gt.gridwidth = 2;
-        gt.insets = new Insets(0, 0, 12, 0);
-        gt.fill = GridBagConstraints.HORIZONTAL;
-        p.add(titulo, gt);
+        JButton btnRegistrar = Tema.anchoCompleto(Estilo.botonPrincipal("Crear cuenta"));
+        JButton btnVolver = Tema.anchoCompleto(Estilo.botonSecundario("Ya tengo cuenta · Iniciar sesión"));
 
-        int f = 1;
-        fila(p, f++, "Me registro como", cmbRol);
-        fila(p, f++, "Nombre completo", txtNombre);
-        lblMatricula = fila(p, f++, "Matrícula", txtMatricula);
-        lblCarrera = fila(p, f++, "Carrera", txtCarrera);
-        lblPrograma = fila(p, f++, "Programa", cmbPrograma);
-        fila(p, f++, "Correo", txtCorreo);
-        fila(p, f++, "Contraseña (mín. 8)", txtPassword);
-        fila(p, f++, "Confirmar contraseña", txtConfirmar);
-        lblCodigo = fila(p, f++, "Código de docente", txtCodigo);
+        // Al lado del rol: el programa (alumnos) o el código (docentes)
+        espacioRol = new JPanel(new CardLayout());
+        espacioRol.setOpaque(false);
+        espacioRol.add(Tema.campoEtiquetado("Programa", cmbPrograma), "alumno");
+        JPanel docente = new JPanel(new BorderLayout());
+        docente.setOpaque(false);
+        if (CODIGO_DOCENTE != null) {
+            docente.add(Tema.campoEtiquetado("Código de docente", txtCodigo));
+        }
+        espacioRol.add(docente, "docente");
 
-        JButton btnRegistrar = new JButton("Registrarme");
-        JButton btnVolver = new JButton("Atras");
-        JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        botones.add(btnVolver);
-        botones.add(btnRegistrar);
-        GridBagConstraints gb = new GridBagConstraints();
-        gb.gridx = 0; gb.gridy = f; gb.gridwidth = 2;
-        gb.insets = new Insets(16, 0, 0, 0);
-        p.add(botones, gb);
+        filaAlumno = Tema.conEspacio(Tema.dos(
+                Tema.campoEtiquetado("Matrícula", txtMatricula),
+                Tema.campoEtiquetado("Carrera", txtCarrera)), 12);
 
+        // ---------- Tarjeta central ----------
+        Tema.Tarjeta card = new Tema.Tarjeta(620);
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBorder(BorderFactory.createEmptyBorder(24, 36, 24, 36));
+
+        card.add(Tema.titulo("Crear cuenta"));
+        card.add(Box.createVerticalStrut(4));
+        card.add(Tema.subtitulo("Regístrate para dar seguimiento a tu servicio social o prácticas"));
+        card.add(Box.createVerticalStrut(16));
+        card.add(Tema.conEspacio(Tema.dos(
+                Tema.campoEtiquetado("Me registro como", cmbRol), espacioRol), 12));
+        card.add(Tema.conEspacio(Tema.campoEtiquetado("Nombre completo", txtNombre), 12));
+        card.add(filaAlumno);
+        card.add(Tema.conEspacio(Tema.campoEtiquetado("Correo", txtCorreo), 12));
+        card.add(Tema.conEspacio(Tema.dos(
+                Tema.campoEtiquetado("Contraseña (mín. 8)", txtPassword),
+                Tema.campoEtiquetado("Confirmar contraseña", txtConfirmar)), 6));
+        card.add(VerPassword.crear(txtPassword, txtConfirmar, txtCodigo));
+        card.add(Box.createVerticalStrut(14));
+        card.add(btnRegistrar);
+        card.add(Box.createVerticalStrut(8));
+        card.add(btnVolver);
+
+        // ---------- Página: barra superior + tarjeta centrada ----------
+        JPanel centro = new JPanel(new GridBagLayout());
+        centro.setBackground(Estilo.FONDO);
+        centro.add(card);
+
+        JPanel raiz = new JPanel(new BorderLayout());
+        raiz.setBackground(Estilo.FONDO);
+        raiz.add(Tema.barraSuperior(), BorderLayout.NORTH);
+        raiz.add(centro, BorderLayout.CENTER);
+        setContentPane(raiz);
+
+        // ---------- Eventos ----------
         cmbRol.addActionListener(e -> actualizarCampos());
         btnRegistrar.addActionListener(e -> registrar());
         btnVolver.addActionListener(e -> volverAlLogin());
 
-        setContentPane(p);
         actualizarCampos();
+        setSize(1000, 700);
+        setMinimumSize(new Dimension(700, 660));
         setLocationRelativeTo(null);
-    }
-
-    /** Agrega etiqueta + campo en la fila indicada y devuelve la etiqueta. */
-    private JLabel fila(JPanel p, int y, String texto, JComponent campo) {
-        GridBagConstraints g = new GridBagConstraints();
-        g.insets = new Insets(5, 4, 5, 4);
-        g.fill = GridBagConstraints.HORIZONTAL;
-        g.gridy = y;
-
-        JLabel l = new JLabel(texto);
-        g.gridx = 0; g.weightx = 0;
-        p.add(l, g);
-        g.gridx = 1; g.weightx = 1;
-        p.add(campo, g);
-        campo.putClientProperty("etiqueta", l);
-        return l;
+        Estilo.pantallaCompleta(this);
     }
 
     /** Muestra u oculta campos según el rol elegido. */
     private void actualizarCampos() {
         boolean alumno = cmbRol.getSelectedIndex() == 0;
-        mostrar(lblMatricula, txtMatricula, alumno);
-        mostrar(lblCarrera, txtCarrera, alumno);
-        mostrar(lblPrograma, cmbPrograma, alumno);
-        mostrar(lblCodigo, txtCodigo, !alumno && CODIGO_DOCENTE != null);
-        pack();
-    }
-
-    private void mostrar(JLabel l, JComponent c, boolean visible) {
-        l.setVisible(visible);
-        c.setVisible(visible);
+        filaAlumno.setVisible(alumno);
+        ((CardLayout) espacioRol.getLayout()).show(espacioRol, alumno ? "alumno" : "docente");
+        revalidate();
+        repaint();
     }
 
     private void registrar() {
