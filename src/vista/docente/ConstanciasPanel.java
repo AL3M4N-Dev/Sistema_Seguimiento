@@ -29,6 +29,7 @@ import vista.comun.EstadoRenderer;
 import vista.comun.Estilo;
 import vista.comun.Formato;
 import vista.comun.ListaTableModel;
+import util.ValidarHoras;
 
 /**
  * Pestaña 3 (solo responsable de área): solicitudes de constancia.

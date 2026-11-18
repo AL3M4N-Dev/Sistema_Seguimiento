@@ -8,6 +8,8 @@ import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Timestamp;
 import modelo.Inscripcion;
 import util.Conexion;
+import java.util.ArrayList;
+import java.util.List;
 
 public class InscripcionDAO {
 
@@ -75,5 +77,42 @@ public class InscripcionDAO {
                 throw e;
             }
         }
+    }
+    
+        /** Id de la inscripción activa del alumno, o null si no tiene. */
+    public Integer idInscripcionActiva(int idAlumno) throws SQLException {
+        String sql = "SELECT id_inscripcion FROM inscripciones "
+                + "WHERE id_alumno = ? AND estado = 'activa' ORDER BY fecha_inscripcion DESC LIMIT 1";
+        try (Connection con = Conexion.getConexion();
+            PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idAlumno);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : null;
+            }
+        }
+    }
+
+    /** Correos a avisar cuando llega un turno: el docente asignado o, si no hay, todos los docentes activos. */
+    public List<String> correosParaRevision(int idInscripcion) throws SQLException {
+        String asignado = "SELECT u.correo FROM inscripciones i "
+                + "JOIN usuarios u ON u.id_usuario = i.id_docente "
+                + "WHERE i.id_inscripcion = ? AND u.activo = 1";
+        String todos = "SELECT correo FROM usuarios WHERE rol = 'docente' AND activo = 1";
+        List<String> correos = new ArrayList<>();
+        try (Connection con = Conexion.getConexion()) {
+            try (PreparedStatement ps = con.prepareStatement(asignado)) {
+                ps.setInt(1, idInscripcion);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) correos.add(rs.getString(1));
+                }
+            }
+            if (correos.isEmpty()) {
+                try (PreparedStatement ps = con.prepareStatement(todos);
+                    ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) correos.add(rs.getString(1));
+                }
+            }
+        }
+        return correos;
     }
 }

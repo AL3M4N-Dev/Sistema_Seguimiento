@@ -9,6 +9,7 @@ import util.Sesion;
 import vista.docente.PanelDocenteFrame;
 import vista.alumno.InstruccionesFrame;
 import vista.alumno.MenuPrincipalFrame;
+import vista.alumno.RegistroHorasDialog;
 
 public class LoginFrame extends JFrame {
 
@@ -129,9 +130,12 @@ public class LoginFrame extends JFrame {
 
         // Alumno
         if (!dao.tieneInscripcion(u.getIdUsuario())) {
-            new InstruccionesFrame().setVisible(true);   // integrante 2 (nombre por confirmar)
+            new InstruccionesFrame().setVisible(true);   // Adan
         } else {
-            new MenuPrincipalFrame().setVisible(true);   // integrante 3 (nombre por confirmar)
+            MenuPrincipalFrame menu = new MenuPrincipalFrame();
+            menu.setAccionAnadirHoras(() -> new RegistroHorasDialog(menu).mostrar());
+            menu.setAccionCorregirRegistro(id -> new RegistroHorasDialog(menu, id).mostrar());
+            menu.setVisible(true);   //Herson
         }
         return true;
     }
@@ -151,4 +155,5 @@ public class LoginFrame extends JFrame {
     private void aviso(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Aviso", JOptionPane.WARNING_MESSAGE);
     }
+    
 }
