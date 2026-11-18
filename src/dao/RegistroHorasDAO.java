@@ -13,10 +13,14 @@ import java.util.List;
 import modelo.EstadoRegistro;
 import modelo.RegistroHoras;
 import util.Conexion;
+import java.sql.Statement;
+import modelo.Evidencia;
 
 /** Revisión de la tabla registros_horas (parte 5: panel del docente). */
 public class RegistroHorasDAO {
-
+    
+    private final EvidenciaDAO evidenciaDAO = new EvidenciaDAO();
+    
     private static final String SELECT_BASE =
             "SELECT r.id_registro, r.id_inscripcion, u.nombre AS alumno, u.matricula, ins.tipo, "
             + "       ins.nombre AS institucion, r.fecha, r.hora_inicio, r.hora_fin, r.horas_calculadas, "
@@ -156,5 +160,95 @@ public class RegistroHorasDAO {
         r.setFechaEnvio(envio == null ? null : envio.toLocalDateTime());
         r.setHorasRequeridas(rs.getInt("horas_requeridas"));
         return r;
+    }
+    
+        /** Guarda un turno nuevo como pendiente, con sus evidencias, en una sola transacción. */
+    public int insertar(RegistroHoras r, List<Evidencia> evidencias) throws SQLException {
+        String sql = "INSERT INTO registros_horas "
+                + "(id_inscripcion, fecha, hora_inicio, hora_fin, horas_calculadas, reporte, estado, fecha_envio) "
+                + "VALUES (?, ?, ?, ?, ?, ?, 'pendiente', NOW())";
+        try (Connection con = Conexion.getConexion()) {
+            con.setAutoCommit(false);
+            try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setInt(1, r.getIdInscripcion());
+                ps.setObject(2, r.getFecha());
+                ps.setObject(3, r.getHoraInicio());
+                ps.setObject(4, r.getHoraFin());
+                ps.setBigDecimal(5, r.getHorasCalculadas());
+                ps.setString(6, r.getReporte());
+                ps.executeUpdate();
+                int idRegistro;
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    keys.next();
+                    idRegistro = keys.getInt(1);
+                }
+                for (Evidencia e : evidencias) {
+                    evidenciaDAO.insertar(con, idRegistro, e);
+                }
+                con.commit();
+                return idRegistro;
+            } catch (SQLException ex) {
+                con.rollback();
+                throw ex;
+            }
+        }
+    }
+    
+        /**
+        * Reenvía un turno rechazado ya corregido: vuelve a pendiente.
+        * @return false si el registro ya no estaba rechazado
+        */
+    public boolean reenviar(RegistroHoras r, List<Evidencia> nuevas, List<Integer> idsEvidenciasEliminadas)
+            throws SQLException {
+        String sql = "UPDATE registros_horas SET fecha = ?, hora_inicio = ?, hora_fin = ?, "
+                + "horas_calculadas = ?, reporte = ?, estado = 'pendiente', fecha_envio = NOW(), "
+                + "comentario_docente = NULL, id_docente_revisor = NULL, fecha_revision = NULL "
+                + "WHERE id_registro = ? AND estado = 'rechazado'";
+        try (Connection con = Conexion.getConexion()) {
+            con.setAutoCommit(false);
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setObject(1, r.getFecha());
+                ps.setObject(2, r.getHoraInicio());
+                ps.setObject(3, r.getHoraFin());
+                ps.setBigDecimal(4, r.getHorasCalculadas());
+                ps.setString(5, r.getReporte());
+                ps.setInt(6, r.getIdRegistro());
+                if (ps.executeUpdate() != 1) {
+                    con.rollback();
+                    return false;
+                }
+                for (int idEv : idsEvidenciasEliminadas) {
+                    evidenciaDAO.eliminar(con, idEv);
+                }
+                for (Evidencia e : nuevas) {
+                    evidenciaDAO.insertar(con, r.getIdRegistro(), e);
+                }
+                con.commit();
+                return true;
+            } catch (SQLException ex) {
+                con.rollback();
+                throw ex;
+            }
+        }
+    }
+
+        /** ¿El turno se encima con otro de la misma inscripción ese día? (idExcluir = 0 si es nuevo) */
+    public boolean existeTraslape(int idInscripcion, LocalDate fecha, LocalTime inicio, LocalTime fin,
+            int idExcluir) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM registros_horas "
+                + "WHERE id_inscripcion = ? AND fecha = ? AND hora_inicio < ? AND hora_fin > ? "
+                + "AND estado <> 'rechazado' AND id_registro <> ?";
+        try (Connection con = Conexion.getConexion();
+            PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idInscripcion);
+            ps.setObject(2, fecha);
+            ps.setObject(3, fin);
+            ps.setObject(4, inicio);
+            ps.setInt(5, idExcluir);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1) > 0;
+            }
+        }
     }
 }

@@ -7,11 +7,19 @@
             <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/dao/UsuarioDAO.java</file>
             <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/sistemaseguimiento/SistemaSeguimiento.java</file>
             <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/comun/LoginFrame.java</file>
-            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/comun/RegistroFrame.java</file>
-            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/docente/PanelDocenteFrame.java</file>
-            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/util/CorreoUtil.java</file>
-            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/dao/RecuperacionDAO.java</file>
             <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/comun/RecuperarPasswordFrame.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/alumno/InstruccionesFrame.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/dao/RecuperacionDAO.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/util/CorreoUtil.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/comun/VerPassword.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/comun/RegistroFrame.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/comun/Formato.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/comun/Tema.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/vista/comun/Boton.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/modelo/Inscripcion.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/modelo/Evidencia.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/modelo/RegistroHoras.java</file>
+            <file>file:/C:/Users/luisa/Documents/NetBeansProjects/SistemaSeguimiento/src/dao/RegistroHorasDAO.java</file>
         </group>
     </open-files>
 </project-private>
