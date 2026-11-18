@@ -273,4 +273,8 @@ public class PanelDocenteService {
     private static String texto(BigDecimal horas) {
         return horas == null || horas.signum() == 0 ? "0" : horas.stripTrailingZeros().toPlainString();
     }
+
+    public void subirConstancia(int idSolicitud, File archivo) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 }
